@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Pharmacy Registration{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+      <div class="card card-custom shadow p-4">
+        <div class="text-center mb-4">
+          <div class="stat-icon blue mx-auto mb-2">
+            <i class="bi bi-hospital-fill"></i>
+          </div>
+          <h3 class="fw-bold">Pharmacy Partner Registration</h3>
+          <p class="text-muted small">Register your pharmacy to list medicine stock, prices, and connect with local patients</p>
+          <div class="alert alert-info py-2 small mb-0">
+            <i class="bi bi-info-circle-fill me-1"></i>New pharmacy registrations undergo an <strong>Admin Approval</strong> process before becoming visible in public search.
+          </div>
+        </div>
+
+        <form action="{{ url_for('auth.pharmacy_register') }}" method="POST">
+          <h6 class="fw-bold text-primary border-bottom pb-2 mb-3"><i class="bi bi-building me-1"></i>Pharmacy & Contact Info</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Pharmacy Name <span class="text-danger">*</span></label>
+              <input type="text" name="pharmacy_name" class="form-control" placeholder="e.g. Apex Care Pharmacy" value="{{ form_data.get('pharmacy_name', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Owner / Manager Name <span class="text-danger">*</span></label>
+              <input type="text" name="owner_name" class="form-control" placeholder="e.g. Dr. K. Ramesh" value="{{ form_data.get('owner_name', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Contact Email <span class="text-danger">*</span></label>
+              <input type="email" name="email" class="form-control" placeholder="pharmacy@example.com" value="{{ form_data.get('email', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" placeholder="+91 8912345678" value="{{ form_data.get('phone', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+              <input type="password" name="password" class="form-control" minlength="6" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+              <input type="password" name="confirm_password" class="form-control" minlength="6" required>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4"><i class="bi bi-geo-alt-fill me-1"></i>Store Location & Hours</h6>
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-semibold">Full Address <span class="text-danger">*</span></label>
+              <input type="text" name="address" class="form-control" placeholder="Shop No. 12, Main Road" value="{{ form_data.get('address', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Area / Locality <span class="text-danger">*</span></label>
+              <input type="text" name="area" class="form-control" placeholder="e.g. Cantonment" value="{{ form_data.get('area', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">City <span class="text-danger">*</span></label>
+              <input type="text" name="city" class="form-control" placeholder="e.g. Vizianagaram" value="{{ form_data.get('city', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Pincode <span class="text-danger">*</span></label>
+              <input type="text" name="pincode" class="form-control" placeholder="e.g. 535003" value="{{ form_data.get('pincode', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">State</label>
+              <input type="text" name="state" class="form-control" value="{{ form_data.get('state', 'Andhra Pradesh') if form_data else 'Andhra Pradesh' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Operating Hours</label>
+              <input type="text" name="operating_hours" class="form-control" placeholder="8:00 AM - 10:00 PM" value="{{ form_data.get('operating_hours', '8:00 AM - 10:00 PM') if form_data else '8:00 AM - 10:00 PM' }}">
+            </div>
+          </div>
+
+          <div class="card bg-light p-3 mt-3 border">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <span class="fw-semibold small"><i class="bi bi-pin-map-fill me-1"></i>Store Geolocation Coordinates</span>
+                <div class="small text-muted">Accurate coordinates enable users to compute exact distance (Haversine)</div>
+              </div>
+              <button type="button" id="pharm-gps-btn" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-geo-alt me-1"></i>Fetch GPS
+              </button>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-6">
+                <input type="text" id="pharm-lat" name="latitude" class="form-control form-control-sm" placeholder="Latitude" value="{{ form_data.get('latitude', '') if form_data else '' }}">
+              </div>
+              <div class="col-6">
+                <input type="text" id="pharm-lng" name="longitude" class="form-control form-control-sm" placeholder="Longitude" value="{{ form_data.get('longitude', '') if form_data else '' }}">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2 mt-4 fw-semibold">
+            <i class="bi bi-send-check me-1"></i>Submit Pharmacy Registration
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('pharm-gps-btn').addEventListener('click', function() {
+  detectUserLocation(function(coords, err) {
+    if (err) {
+      alert(err);
+      return;
+    }
+    if (coords) {
+      document.getElementById('pharm-lat').value = coords.latitude;
+      document.getElementById('pharm-lng').value = coords.longitude;
+      showToast('Store coordinates set!', 'success');
+    }
+  });
+});
+</script>
+{% endblock %}

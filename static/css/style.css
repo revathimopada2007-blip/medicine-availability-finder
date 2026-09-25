@@ -1,0 +1,351 @@
+/* Medicine Availability Finder - Healthcare Design Theme (Green + White) */
+:root {
+  --primary-color: #059669;
+  --primary-hover: #047857;
+  --primary-light: #d1fae5;
+  --primary-subtle: #ecfdf5;
+  --secondary-color: #0f766e;
+  --accent-color: #10b981;
+  --text-dark: #1e293b;
+  --text-muted: #64748b;
+  --bg-light: #f8fafc;
+  --bg-white: #ffffff;
+  --card-border: #e2e8f0;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --info-color: #3b82f6;
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  color: var(--text-dark);
+  background-color: var(--bg-light);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* Navbar */
+.navbar-custom {
+  background-color: var(--bg-white);
+  border-bottom: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  color: var(--primary-color) !important;
+  font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-brand i {
+  font-size: 1.6rem;
+  margin-right: 0.5rem;
+  color: var(--accent-color);
+}
+
+.nav-link {
+  font-weight: 500;
+  color: var(--text-dark);
+  transition: color 0.15s ease;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: var(--primary-color) !important;
+}
+
+/* Hero Section */
+.hero-section {
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 50%, #ffffff 100%);
+  padding: 4.5rem 1rem 3.5rem 1rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.hero-title {
+  font-weight: 800;
+  color: #064e3b;
+  font-size: 2.75rem;
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 680px;
+  margin: 1rem auto 2rem auto;
+}
+
+/* Search Box Container */
+.search-card-hero {
+  background: var(--bg-white);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--card-border);
+  padding: 1.25rem;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.input-group-lg > .form-control {
+  font-size: 1.1rem;
+  border-radius: var(--border-radius-md);
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  font-weight: 600;
+  border-radius: var(--border-radius-sm);
+  padding: 0.55rem 1.25rem;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-outline-primary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  font-weight: 600;
+  border-radius: var(--border-radius-sm);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
+}
+
+.btn-success {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.btn-gps {
+  background-color: var(--primary-light);
+  color: var(--primary-hover);
+  border: 1px solid #a7f3d0;
+  font-weight: 600;
+}
+
+.btn-gps:hover {
+  background-color: #a7f3d0;
+  color: var(--primary-hover);
+}
+
+/* Standard Cards */
+.card-custom {
+  background: var(--bg-white);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-custom:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-header-clean {
+  background-color: transparent;
+  border-bottom: 1px solid var(--card-border);
+  padding: 1rem 1.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* Stock Status Badges */
+.badge-available {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.badge-low-stock {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.badge-out-of-stock {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.demo-badge {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+}
+
+/* Pharmacy Card Results */
+.pharmacy-result-card {
+  border-left: 4px solid var(--primary-color);
+}
+
+.pharmacy-result-card.out-of-stock {
+  border-left: 4px solid var(--danger-color);
+  opacity: 0.92;
+}
+
+.distance-badge {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.distance-badge.has-dist {
+  background-color: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+/* Stat Cards */
+.stat-card {
+  border-radius: var(--border-radius-md);
+  padding: 1.25rem;
+  background: var(--bg-white);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin-right: 1rem;
+}
+
+.stat-icon.green {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.stat-icon.yellow {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.stat-icon.red {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.stat-icon.blue {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-dark);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Footer */
+.footer-custom {
+  background-color: #064e3b;
+  color: #d1fae5;
+  padding: 2.5rem 0 1.5rem 0;
+  margin-top: auto;
+}
+
+.footer-disclaimer-box {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-left: 4px solid #34d399;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #e6fffa;
+  margin-bottom: 1.5rem;
+}
+
+/* Search Suggestions dropdown */
+.search-suggestions-box {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 1050;
+  max-height: 280px;
+  overflow-y: auto;
+  display: none;
+}
+
+.suggestion-item {
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.suggestion-item:hover {
+  background-color: var(--primary-subtle);
+}
+
+/* Responsive adjust */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  .search-card-hero {
+    padding: 1rem;
+  }
+}

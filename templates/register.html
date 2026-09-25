@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}User Registration{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+      <div class="card card-custom shadow p-4">
+        <div class="text-center mb-4">
+          <div class="stat-icon green mx-auto mb-2">
+            <i class="bi bi-person-plus-fill"></i>
+          </div>
+          <h3 class="fw-bold">Create User Account</h3>
+          <p class="text-muted small">Register to save favourite pharmacies, keep search history, and store your location</p>
+        </div>
+
+        <form action="{{ url_for('auth.register') }}" method="POST">
+          <h6 class="fw-bold text-success border-bottom pb-2 mb-3"><i class="bi bi-person-lines-fill me-1"></i>Personal Details</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="e.g. Mohan Malicherla" value="{{ form_data.get('name', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" placeholder="e.g. +91 9848012345" value="{{ form_data.get('phone', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+              <input type="email" name="email" class="form-control" placeholder="e.g. user@example.com" value="{{ form_data.get('email', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+              <input type="password" name="password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+              <input type="password" name="confirm_password" class="form-control" placeholder="Re-enter password" minlength="6" required>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-success border-bottom pb-2 mb-3 mt-4"><i class="bi bi-geo-alt-fill me-1"></i>Location & Address Details</h6>
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-semibold">Street Address / House No.</label>
+              <input type="text" name="address" class="form-control" placeholder="e.g. House No. 4-12, Phool Baugh" value="{{ form_data.get('address', '') if form_data else '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Area / Locality</label>
+              <input type="text" name="area" class="form-control" placeholder="e.g. Phool Baugh / Cantonment" value="{{ form_data.get('area', '') if form_data else '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">City <span class="text-danger">*</span></label>
+              <input type="text" name="city" class="form-control" placeholder="e.g. Vizianagaram" value="{{ form_data.get('city', '') if form_data else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">State</label>
+              <input type="text" name="state" class="form-control" placeholder="e.g. Andhra Pradesh" value="{{ form_data.get('state', 'Andhra Pradesh') if form_data else 'Andhra Pradesh' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Pincode</label>
+              <input type="text" name="pincode" class="form-control" placeholder="e.g. 535002" value="{{ form_data.get('pincode', '') if form_data else '' }}">
+            </div>
+          </div>
+
+          <div class="card bg-light p-3 mt-3 border">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <span class="fw-semibold small"><i class="bi bi-crosshair me-1"></i>GPS Coordinates (Optional)</span>
+                <div class="small text-muted">Auto-fill via browser GPS for instant distance calculations</div>
+              </div>
+              <button type="button" id="reg-gps-btn" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-geo-alt me-1"></i>Detect GPS
+              </button>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-6">
+                <input type="text" id="reg-lat" name="latitude" class="form-control form-control-sm" placeholder="Latitude" value="{{ form_data.get('latitude', '') if form_data else '' }}">
+              </div>
+              <div class="col-6">
+                <input type="text" id="reg-lng" name="longitude" class="form-control form-control-sm" placeholder="Longitude" value="{{ form_data.get('longitude', '') if form_data else '' }}">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2 mt-4 fw-semibold">
+            <i class="bi bi-check2-circle me-1"></i>Create Account
+          </button>
+        </form>
+
+        <div class="text-center mt-3 small">
+          Already have an account? <a href="{{ url_for('auth.login') }}" class="fw-bold text-success">Login here</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('reg-gps-btn').addEventListener('click', function() {
+  detectUserLocation(function(coords, err) {
+    if (err) {
+      alert(err);
+      return;
+    }
+    if (coords) {
+      document.getElementById('reg-lat').value = coords.latitude;
+      document.getElementById('reg-lng').value = coords.longitude;
+      showToast('GPS coordinates acquired!', 'success');
+    }
+  });
+});
+</script>
+{% endblock %}

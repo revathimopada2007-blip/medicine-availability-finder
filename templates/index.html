@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Medicine Availability in Nearby Pharmacies{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section text-center">
+  <div class="container">
+    <div class="d-inline-flex align-items-center bg-white border border-success-subtle rounded-pill px-3 py-1 mb-3 shadow-sm">
+      <span class="badge bg-success rounded-pill me-2">Verified System</span>
+      <span class="small text-muted fw-semibold">Genuinely Connected: Frontend &rarr; Flask Backend &rarr; SQLite DB</span>
+    </div>
+
+    <h1 class="hero-title">Find Medicine Availability in Nearby Pharmacies</h1>
+    <p class="hero-subtitle">
+      Search medicines in real-time, view verified pharmacy stock, check prices, calculate exact distances, and get instant directions.
+    </p>
+
+    <!-- Hero Search Bar -->
+    <div class="search-card-hero text-start">
+      <form id="medicine-search-form" action="{{ url_for('medicine.search') }}" method="GET">
+        <div class="row g-2 align-items-center">
+          <div class="col-lg-7 position-relative">
+            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-capsule me-1"></i>Search Medicine</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="bi bi-search text-success"></i></span>
+              <input type="text" id="search-query-input" name="q" class="form-control form-control-lg" placeholder="e.g. Paracetamol, Cetirizine, ORS, Dolo..." autocomplete="off" required>
+            </div>
+            <!-- Live Suggestions Dropdown -->
+            <div id="search-suggestions" class="search-suggestions-box"></div>
+          </div>
+
+          <div class="col-lg-5">
+            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-geo-alt me-1"></i>Location / Area</label>
+            <div class="input-group">
+              <input type="text" name="city" class="form-control form-control-lg" placeholder="City or Area (e.g. Vizianagaram)" value="{{ current_user_city or '' }}">
+              <button type="submit" class="btn btn-primary btn-lg px-4">Search</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lat / Lng hidden fields -->
+        <input type="hidden" id="search-lat" name="lat" value="{{ current_user_lat or '' }}">
+        <input type="hidden" id="search-lng" name="lng" value="{{ current_user_lng or '' }}">
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 pt-2 border-top">
+          <button type="button" id="detect-gps-btn" class="btn btn-gps btn-sm">
+            <i class="bi bi-crosshair me-1"></i>Use My Current Location
+          </button>
+          <div id="location-status-text" class="small text-muted">
+            {% if current_user_lat and current_user_lng %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle me-1"></i>Saved GPS: {{ current_user_lat|round(4) }}, {{ current_user_lng|round(4) }}</span>
+            {% elif current_user_city %}
+              <span class="badge bg-light text-dark border"><i class="bi bi-geo-alt me-1"></i>{{ current_user_city }}</span>
+            {% else %}
+              <span><i class="bi bi-info-circle me-1"></i>Allow GPS or enter city to calculate accurate distances</span>
+            {% endif %}
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Quick Medicine Tags -->
+    <div class="mt-4">
+      <span class="small text-muted me-2">Popular searches:</span>
+      <a href="{{ url_for('medicine.search', q='Paracetamol') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Paracetamol 500mg</a>
+      <a href="{{ url_for('medicine.search', q='Cetirizine') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Cetirizine 10mg</a>
+      <a href="{{ url_for('medicine.search', q='ORS') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">ORS Electral</a>
+      <a href="{{ url_for('medicine.search', q='Ibuprofen') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Ibuprofen 400mg</a>
+      <a href="{{ url_for('medicine.search', q='Amoxicillin') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Amoxicillin 500mg</a>
+    </div>
+  </div>
+</section>
+
+<!-- Features / How it works Section -->
+<section class="py-5 bg-white">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-bold">How Medicine Availability Finder Works</h2>
+      <p class="text-muted">A realistic three-tier architecture ensuring genuine data integrity</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card card-custom h-100 p-4 text-center">
+          <div class="stat-icon green mx-auto mb-3">
+            <i class="bi bi-geo-alt-fill"></i>
+          </div>
+          <h4 class="fw-bold">1. Location-Aware</h4>
+          <p class="text-muted">Uses your browser's Geolocation API or manual locality to calculate genuine Haversine distances to registered pharmacies.</p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card card-custom h-100 p-4 text-center">
+          <div class="stat-icon blue mx-auto mb-3">
+            <i class="bi bi-database-check"></i>
+          </div>
+          <h4 class="fw-bold">2. Direct Inventory</h4>
+          <p class="text-muted">Pharmacies maintain their own live stock count, pricing, and batch expiry. Changes immediately reflect in user search results.</p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card card-custom h-100 p-4 text-center">
+          <div class="stat-icon yellow mx-auto mb-3">
+            <i class="bi bi-pin-map-fill"></i>
+          </div>
+          <h4 class="fw-bold">3. Directions & Details</h4>
+          <p class="text-muted">Get one-click navigation to the pharmacy, view contact numbers, operating hours, and track prescription requirements.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Demo Labeling Note for College Evaluation -->
+<section class="py-4 bg-light border-top border-bottom">
+  <div class="container text-center">
+    <span class="demo-badge me-2">Demo Pharmacy — College Project</span>
+    <span class="small text-muted">All seed data (DemoCare Pharmacy, City Health, Community Medicals, Student Health) are clearly labelled demo accounts for academic evaluation.</span>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% endblock %}

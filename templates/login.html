@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card card-custom shadow p-4">
+        <div class="text-center mb-4">
+          <div class="stat-icon green mx-auto mb-2">
+            <i class="bi bi-box-arrow-in-right"></i>
+          </div>
+          <h3 class="fw-bold">Sign In to MedFinder</h3>
+          <p class="text-muted small">Access your user, pharmacy, or admin dashboard</p>
+        </div>
+
+        <form action="{{ url_for('auth.login', next=request.args.get('next')) }}" method="POST">
+          <div class="mb-3">
+            <label for="email" class="form-label fw-semibold">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+              <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" placeholder="name@example.com" required autofocus>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="password" class="form-label fw-semibold">Password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock"></i></span>
+              <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Login
+          </button>
+        </form>
+
+        <hr class="my-4">
+
+        <div class="text-center small">
+          <p class="mb-2">Don't have an account? <a href="{{ url_for('auth.register') }}" class="fw-bold text-success">Register as User</a></p>
+          <p class="mb-0">Are you a pharmacy owner? <a href="{{ url_for('auth.pharmacy_register') }}" class="fw-bold text-primary">Register Pharmacy</a></p>
+        </div>
+      </div>
+
+      <!-- Quick Demo Credentials Box for College Evaluation -->
+      <div class="card card-custom mt-3 p-3 bg-white">
+        <div class="small fw-bold text-muted mb-2"><i class="bi bi-info-circle me-1"></i>Quick Demo Credentials:</div>
+        <div class="row g-2 small">
+          <div class="col-12 p-2 bg-light rounded">
+            <strong>👤 User:</strong> <code>user@medfinder.com</code> / <code>User@123</code>
+          </div>
+          <div class="col-12 p-2 bg-light rounded">
+            <strong>🏪 Pharmacy:</strong> <code>democare@pharmacy.com</code> / <code>Demo@123</code>
+          </div>
+          <div class="col-12 p-2 bg-light rounded">
+            <strong>👨‍💼 Admin:</strong> <code>admin@medfinder.com</code> / <code>Admin@123</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

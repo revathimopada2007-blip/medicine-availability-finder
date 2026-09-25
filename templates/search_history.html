@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Search History{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card card-custom p-4 shadow-sm">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Your Search History</h3>
+        <p class="text-muted small mb-0">Re-run your previous searches with one click</p>
+      </div>
+      {% if history|length > 0 %}
+        <form action="{{ url_for('user.clear_history') }}" method="POST" onsubmit="return confirm('Clear your entire search history?');">
+          <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash me-1"></i>Clear History
+          </button>
+        </form>
+      {% endif %}
+    </div>
+
+    {% if history|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Search Query</th>
+              <th>Searched On</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in history %}
+              <tr>
+                <td>
+                  <i class="bi bi-search text-muted me-2"></i>
+                  <strong>{{ item.search_query }}</strong>
+                </td>
+                <td class="text-muted small">{{ item.formatted_time }}</td>
+                <td class="text-end">
+                  <a href="{{ url_for('medicine.search', q=item.search_query) }}" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-arrow-repeat me-1"></i>Search Again
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-search mb-2" style="font-size: 2.5rem;"></i>
+        <h5>Your search history is empty.</h5>
+        <p class="small">When you search for medicines, they will appear here.</p>
+        <a href="{{ url_for('medicine.search') }}" class="btn btn-primary btn-sm mt-2">Start Searching</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

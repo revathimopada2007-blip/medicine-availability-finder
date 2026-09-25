@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ medicine.name }} - Availability & Details{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('medicine.index') }}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('medicine.search') }}">Medicines</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ medicine.name }}</li>
+    </ol>
+  </nav>
+
+  <!-- Medicine Overview Header -->
+  <div class="card card-custom p-4 mb-4 shadow-sm border-start border-success border-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start">
+      <div>
+        <h2 class="fw-bold text-dark mb-1">{{ medicine.name }}</h2>
+        <div class="text-muted fs-6 mb-2">
+          <strong>Generic:</strong> {{ medicine.generic_name or 'N/A' }} &bull; 
+          <strong>Brand:</strong> {{ medicine.brand_name or 'N/A' }}
+        </div>
+        <div class="d-flex gap-2">
+          <span class="badge bg-light text-dark border">{{ medicine.strength }}</span>
+          <span class="badge bg-light text-dark border">{{ medicine.form }}</span>
+          {% if medicine.prescription_required %}
+            <span class="badge bg-danger"><i class="bi bi-file-medical me-1"></i>Prescription Required</span>
+          {% else %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle">Over-the-Counter (OTC)</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="mt-3 mt-md-0">
+        <a href="{{ url_for('medicine.search', q=medicine.name) }}" class="btn btn-primary">
+          <i class="bi bi-search me-1"></i>Find Nearby
+        </a>
+      </div>
+    </div>
+
+    {% if medicine.description %}
+      <hr class="my-3">
+      <div>
+        <h6 class="fw-bold text-muted mb-1">Description & Usage:</h6>
+        <p class="mb-0 text-dark">{{ medicine.description }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pharmacies Stocking Table -->
+  <h4 class="fw-bold mb-3"><i class="bi bi-hospital me-2 text-primary"></i>Pharmacies Stocking {{ medicine.name }}</h4>
+
+  {% if pharmacies_stock|length > 0 %}
+    <div class="row g-3">
+      {% for p in pharmacies_stock %}
+        <div class="col-md-6 col-lg-4">
+          <div class="card card-custom h-100 p-3 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="fw-bold mb-0">
+                <a href="{{ url_for('medicine.pharmacy_details', pharmacy_id=p.pharmacy_id) }}" class="text-dark text-decoration-none">
+                  {{ p.pharmacy_name }}
+                </a>
+              </h5>
+              {% if p.is_demo %}
+                <span class="demo-badge">Demo</span>
+              {% endif %}
+            </div>
+
+            <div class="small text-muted mb-2">
+              <div><i class="bi bi-geo-alt me-1 text-danger"></i>{{ p.pharmacy_area }}, {{ p.pharmacy_city }}</div>
+              <div><i class="bi bi-telephone me-1 text-primary"></i>{{ p.pharmacy_phone }}</div>
+            </div>
+
+            {% if p.distance_km is not none %}
+              <div class="mb-2">
+                <span class="distance-badge has-dist"><i class="bi bi-cursor-fill me-1"></i>{{ p.distance_km }} km away</span>
+              </div>
+            {% endif %}
+
+            <hr class="my-2">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <span class="fs-5 fw-bold text-dark">{{ p.price|currency }}</span>
+              </div>
+              <div>
+                {% if p.quantity > 10 %}
+                  <span class="badge-available">Available ({{ p.quantity }})</span>
+                {% elif p.quantity >= 1 %}
+                  <span class="badge-low-stock">Low Stock ({{ p.quantity }})</span>
+                {% else %}
+                  <span class="badge-out-of-stock">Out of Stock</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="small text-muted mb-3">
+              <i class="bi bi-clock-history me-1"></i>Last updated: {{ p.formatted_updated }}
+            </div>
+
+            <div class="mt-auto d-flex gap-2">
+              <a href="{{ p.directions_url }}" target="_blank" class="btn btn-outline-primary btn-sm flex-fill">
+                <i class="bi bi-map me-1"></i>Directions
+              </a>
+              <a href="{{ url_for('medicine.pharmacy_details', pharmacy_id=p.pharmacy_id) }}" class="btn btn-primary btn-sm flex-fill">
+                <i class="bi bi-shop me-1"></i>Details
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card card-custom p-4 text-center text-muted">
+      <i class="bi bi-shop mb-2" style="font-size: 2rem;"></i>
+      <p class="mb-0">No registered pharmacy currently lists this medicine in stock.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

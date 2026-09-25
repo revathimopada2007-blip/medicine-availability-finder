@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ pharmacy.pharmacy_name }} - Pharmacy Profile{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('medicine.index') }}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('medicine.search') }}">Pharmacies</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ pharmacy.pharmacy_name }}</li>
+    </ol>
+  </nav>
+
+  <!-- Pharmacy Header Card -->
+  <div class="card card-custom p-4 mb-4 shadow-sm border-start border-primary border-4">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <h2 class="fw-bold mb-0 text-dark">{{ pharmacy.pharmacy_name }}</h2>
+          {% if pharmacy.is_demo %}
+            <span class="demo-badge">Demo Pharmacy — College Project</span>
+          {% endif %}
+        </div>
+        <p class="text-muted mb-2"><i class="bi bi-person me-1"></i>Managed by <strong>{{ pharmacy.owner_name }}</strong></p>
+
+        <div class="row g-2 small text-muted mt-2">
+          <div class="col-md-6">
+            <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+            <strong>Address:</strong> {{ pharmacy.address }}, {{ pharmacy.area }}, {{ pharmacy.city }}, {{ pharmacy.state }} - {{ pharmacy.pincode }}
+          </div>
+          <div class="col-md-6">
+            <i class="bi bi-telephone-fill text-primary me-1"></i>
+            <strong>Phone:</strong> {{ pharmacy.phone }}
+          </div>
+          <div class="col-md-6">
+            <i class="bi bi-envelope-fill text-secondary me-1"></i>
+            <strong>Email:</strong> {{ pharmacy.email }}
+          </div>
+          <div class="col-md-6">
+            <i class="bi bi-clock-fill text-warning me-1"></i>
+            <strong>Hours:</strong> {{ pharmacy.operating_hours }}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+        <a href="{{ directions_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg mb-2 w-100 w-lg-auto">
+          <i class="bi bi-map me-1"></i>Get Directions / View on Map
+        </a>
+        {% if session.get('user_id') %}
+          <button type="button" class="btn {% if is_fav %}btn-danger active{% else %}btn-outline-danger{% endif %} w-100 w-lg-auto" onclick="toggleFavourite({{ pharmacy.id }}, this)" data-fav="{{ 'true' if is_fav else 'false' }}">
+            <i class="bi {% if is_fav %}bi-heart-fill{% else %}bi-heart{% endif %} me-1"></i>
+            <span>{{ 'Remove from Favourites' if is_fav else 'Add to Favourites' }}</span>
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Pharmacy Inventory List -->
+  <div class="card card-custom p-4 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="fw-bold mb-0"><i class="bi bi-box-seam me-2 text-success"></i>Available Medicines in Store ({{ inventory|length }})</h4>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Medicine Name</th>
+            <th>Type & Strength</th>
+            <th>Price</th>
+            <th>Stock Status</th>
+            <th>Last Updated</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if inventory|length > 0 %}
+            {% for item in inventory %}
+              <tr>
+                <td>
+                  <strong>{{ item.medicine_name }}</strong>
+                  {% if item.brand_name %}
+                    <div class="small text-muted">{{ item.brand_name }}</div>
+                  {% endif %}
+                  {% if item.prescription_required %}
+                    <span class="badge bg-danger" style="font-size: 0.7rem;">Rx</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ item.strength or 'N/A' }}</span>
+                  <span class="badge bg-light text-dark border">{{ item.form or 'Tablet' }}</span>
+                </td>
+                <td class="fw-bold text-dark">{{ item.price|currency }}</td>
+                <td>
+                  {% if item.quantity > 10 %}
+                    <span class="badge-available"><i class="bi bi-check-circle-fill me-1"></i>Available ({{ item.quantity }})</span>
+                  {% elif item.quantity >= 1 %}
+                    <span class="badge-low-stock"><i class="bi bi-exclamation-triangle-fill me-1"></i>Low Stock ({{ item.quantity }})</span>
+                  {% else %}
+                    <span class="badge-out-of-stock"><i class="bi bi-x-circle-fill me-1"></i>Out of Stock</span>
+                  {% endif %}
+                </td>
+                <td class="small text-muted">{{ item.formatted_updated }}</td>
+                <td>
+                  <a href="{{ url_for('medicine.medicine_details', medicine_id=item.medicine_id) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-info-circle me-1"></i>Details
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-4 text-muted">
+                No medicines listed in this pharmacy's inventory yet.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% endblock %}

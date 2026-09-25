@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}Pharmacy Management - {{ pharmacy.pharmacy_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Pharmacy Header -->
+  <div class="card card-custom p-4 mb-4 shadow-sm">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <h2 class="fw-bold mb-0 text-dark">{{ pharmacy.pharmacy_name }}</h2>
+          <span class="badge bg-success">Active Partner</span>
+          {% if pharmacy.is_demo %}
+            <span class="demo-badge">Demo Pharmacy — College Project</span>
+          {% endif %}
+        </div>
+        <p class="text-muted mb-0 mt-1">
+          <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ pharmacy.address }}, {{ pharmacy.area }}, {{ pharmacy.city }} &bull; 
+          <i class="bi bi-clock me-1 text-secondary ms-2"></i>{{ pharmacy.operating_hours }}
+        </p>
+      </div>
+      <div class="mt-3 mt-md-0 d-flex gap-2">
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addMedicineModal">
+          <i class="bi bi-plus-circle me-1"></i>Add Medicine to Inventory
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Metric Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon blue">
+          <i class="bi bi-box-seam"></i>
+        </div>
+        <div>
+          <div class="stat-value">{{ stats.total_medicines }}</div>
+          <div class="stat-label">Total Medicines</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon green">
+          <i class="bi bi-check-circle"></i>
+        </div>
+        <div>
+          <div class="stat-value text-success">{{ stats.available_count }}</div>
+          <div class="stat-label">In Stock (>10)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon yellow">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div>
+          <div class="stat-value text-warning">{{ stats.low_stock_count }}</div>
+          <div class="stat-label">Low Stock (1-10)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon red">
+          <i class="bi bi-x-circle"></i>
+        </div>
+        <div>
+          <div class="stat-value text-danger">{{ stats.out_of_stock_count }}</div>
+          <div class="stat-label">Out of Stock (0)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <ul class="nav nav-tabs mb-3" id="pharmacyTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab != 'profile' %}active{% endif %}" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button" role="tab">
+        <i class="bi bi-boxes me-1"></i>Inventory List ({{ inventory|length }})
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'profile' %}active{% endif %}" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-pane" type="button" role="tab">
+        <i class="bi bi-gear me-1"></i>Pharmacy Profile & Store Details
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="pharmacyTabContent">
+    <!-- Tab 1: Inventory Table -->
+    <div class="tab-pane fade {% if active_tab != 'profile' %}show active{% endif %}" id="inventory-pane" role="tabpanel">
+      <div class="card card-custom p-4 shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+          <div class="input-group" style="max-width: 320px;">
+            <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+            <input type="text" id="inventory-table-search" class="form-control" placeholder="Filter inventory...">
+          </div>
+          <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#addMedicineModal">
+            <i class="bi bi-plus-lg me-1"></i>Add New Medicine
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Medicine</th>
+                <th>Strength & Form</th>
+                <th>Price (₹)</th>
+                <th>Quantity</th>
+                <th>Stock Status</th>
+                <th>Expiry Date</th>
+                <th>Last Updated</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body">
+              {% if inventory|length > 0 %}
+                {% for item in inventory %}
+                  <tr id="inv-row-{{ item.id }}">
+                    <td>
+                      <strong>{{ item.medicine_name }}</strong>
+                      {% if item.brand_name %}
+                        <div class="small text-muted">{{ item.brand_name }}</div>
+                      {% endif %}
+                      {% if item.prescription_required %}
+                        <span class="badge bg-danger" style="font-size: 0.65rem;">Rx Required</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <span class="badge bg-light text-dark border">{{ item.strength or 'N/A' }}</span>
+                      <span class="badge bg-light text-dark border">{{ item.form or 'Tablet' }}</span>
+                    </td>
+                    <td class="fw-bold">{{ item.price|currency }}</td>
+                    <td>
+                      <span class="fw-bold fs-6">{{ item.quantity }}</span>
+                    </td>
+                    <td>
+                      {% if item.quantity > 10 %}
+                        <span class="badge-available">Available</span>
+                      {% elif item.quantity >= 1 %}
+                        <span class="badge-low-stock">Low Stock</span>
+                      {% else %}
+                        <span class="badge-out-of-stock">Out of Stock</span>
+                      {% endif %}
+                    </td>
+                    <td class="small text-muted">{{ item.expiry_date or 'N/A' }}</td>
+                    <td class="small text-muted">{{ item.formatted_updated }}</td>
+                    <td class="text-end">
+                      <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="openEditInventoryModal({{ item.id }}, '{{ item.medicine_name }}', {{ item.price }}, {{ item.quantity }}, '{{ item.expiry_date or '' }}')" title="Edit Stock & Price">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteInventoryItem({{ item.id }}, '{{ item.medicine_name }}')" title="Remove">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="8" class="text-center py-4 text-muted">
+                    Your inventory is currently empty. Click "Add Medicine to Inventory" to start listing stock.
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Profile Settings -->
+    <div class="tab-pane fade {% if active_tab == 'profile' %}show active{% endif %}" id="profile-pane" role="tabpanel">
+      <div class="card card-custom p-4 shadow-sm">
+        <h4 class="fw-bold mb-3">Update Pharmacy Profile</h4>
+        <form action="{{ url_for('pharmacy.profile') }}" method="POST">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Pharmacy Name</label>
+              <input type="text" name="pharmacy_name" class="form-control" value="{{ pharmacy.pharmacy_name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Owner / Manager Name</label>
+              <input type="text" name="owner_name" class="form-control" value="{{ pharmacy.owner_name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Contact Phone</label>
+              <input type="tel" name="phone" class="form-control" value="{{ pharmacy.phone }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Operating Hours</label>
+              <input type="text" name="operating_hours" class="form-control" value="{{ pharmacy.operating_hours }}" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Address</label>
+              <input type="text" name="address" class="form-control" value="{{ pharmacy.address }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Area</label>
+              <input type="text" name="area" class="form-control" value="{{ pharmacy.area }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">City</label>
+              <input type="text" name="city" class="form-control" value="{{ pharmacy.city }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Pincode</label>
+              <input type="text" name="pincode" class="form-control" value="{{ pharmacy.pincode }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Latitude</label>
+              <input type="text" name="latitude" class="form-control" value="{{ pharmacy.latitude or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Longitude</label>
+              <input type="text" name="longitude" class="form-control" value="{{ pharmacy.longitude or '' }}">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end mt-4">
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2 me-1"></i>Save Profile</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 1: Add Medicine to Inventory -->
+<div class="modal fade" id="addMedicineModal" tabindex="-1" aria-labelledby="addMedicineModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="addMedicineModalLabel"><i class="bi bi-plus-circle me-1 text-success"></i>Add Medicine to Inventory</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="add-inventory-form">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Select Medicine from Master Catalog <span class="text-danger">*</span></label>
+            <select class="form-select" id="inv-medicine-select" required>
+              <option value="">-- Choose Medicine --</option>
+              {% for med in all_medicines %}
+                <option value="{{ med.id }}">{{ med.name }} ({{ med.strength }} {{ med.form }}) - {{ med.brand_name or med.generic_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Unit Price (₹) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">₹</span>
+                <input type="number" step="0.25" min="0" class="form-control" id="inv-price" placeholder="e.g. 25.00" required>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Stock Quantity (Units) <span class="text-danger">*</span></label>
+              <input type="number" min="0" class="form-control" id="inv-quantity" placeholder="e.g. 20" required>
+              <div class="form-text small">> 10 = Available, 1-10 = Low Stock, 0 = Out of Stock</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Expiry Date</label>
+              <input type="date" class="form-control" id="inv-expiry">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-check2 me-1"></i>Add to Inventory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 2: Edit Stock / Price Modal -->
+<div class="modal fade" id="editInventoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-1 text-primary"></i>Update Stock & Price</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-inv-id">
+        <div class="mb-3">
+          <label class="text-muted small">Medicine:</label>
+          <div class="fs-5 fw-bold text-success" id="edit-inv-med-name"></div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Price (₹) <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text">₹</span>
+            <input type="number" step="0.25" min="0" id="edit-inv-price" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Quantity <span class="text-danger">*</span></label>
+          <input type="number" min="0" id="edit-inv-quantity" class="form-control" required>
+          <div class="form-text small">> 10 = Available, 1-10 = Low Stock, 0 = Out of Stock</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Expiry Date</label>
+          <input type="date" id="edit-inv-expiry" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveInventoryEdit()"><i class="bi bi-save me-1"></i>Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/pharmacy.js') }}"></script>
+{% endblock %}

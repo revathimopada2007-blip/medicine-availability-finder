@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card card-custom p-4 shadow-sm">
+        <div class="d-flex align-items-center mb-4">
+          <div class="stat-icon green me-3">
+            <i class="bi bi-person-gear"></i>
+          </div>
+          <div>
+            <h3 class="fw-bold mb-0">Manage Profile</h3>
+            <p class="text-muted small mb-0">Update your account details and contact information</p>
+          </div>
+        </div>
+
+        <form action="{{ url_for('user.profile') }}" method="POST">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="{{ user.name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email Address</label>
+              <input type="email" class="form-control" value="{{ user.email }}" disabled>
+              <div class="form-text small">Email cannot be modified.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" value="{{ user.phone }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Area / Locality</label>
+              <input type="text" name="area" class="form-control" value="{{ user.area or '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Street Address</label>
+              <input type="text" name="address" class="form-control" value="{{ user.address or '' }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">City</label>
+              <input type="text" name="city" class="form-control" value="{{ user.city or '' }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">State</label>
+              <input type="text" name="state" class="form-control" value="{{ user.state or '' }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Pincode</label>
+              <input type="text" name="pincode" class="form-control" value="{{ user.pincode or '' }}">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2 me-1"></i>Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

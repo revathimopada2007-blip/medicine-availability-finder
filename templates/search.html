@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results for "{{ query }}"{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Search Bar Header on Search Page -->
+  <div class="card card-custom p-3 mb-4 shadow-sm">
+    <form id="medicine-search-form" action="{{ url_for('medicine.search') }}" method="GET">
+      <div class="row g-2 align-items-center">
+        <div class="col-lg-6 position-relative">
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
+            <input type="text" id="search-query-input" name="q" class="form-control" placeholder="Search medicine name, generic, brand, strength..." value="{{ query }}" autocomplete="off" required>
+          </div>
+          <div id="search-suggestions" class="search-suggestions-box"></div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-geo-alt text-muted"></i></span>
+            <input type="text" name="city" class="form-control" placeholder="City or Area" value="{{ user_city or '' }}">
+          </div>
+        </div>
+
+        <div class="col-lg-2">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search</button>
+        </div>
+      </div>
+
+      <input type="hidden" id="search-lat" name="lat" value="{{ user_lat or '' }}">
+      <input type="hidden" id="search-lng" name="lng" value="{{ user_lng or '' }}">
+
+      <div class="d-flex flex-wrap align-items-center justify-content-between mt-2 pt-2 border-top small">
+        <button type="button" id="detect-gps-btn" class="btn btn-gps btn-sm py-0 px-2" style="font-size: 0.8rem;">
+          <i class="bi bi-crosshair me-1"></i>Use GPS Location
+        </button>
+        <div id="location-status-text" class="text-muted">
+          {% if user_lat and user_lng %}
+            <span class="text-success"><i class="bi bi-geo-alt-fill me-1"></i>Using coordinates ({{ user_lat|round(4) }}, {{ user_lng|round(4) }})</span>
+          {% elif user_city %}
+            <span><i class="bi bi-geo-alt me-1"></i>Searching near: <strong>{{ user_city }}</strong></span>
+          {% else %}
+            <span><i class="bi bi-info-circle me-1"></i>Exact distance calculation requires GPS coordinates or city</span>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {% if has_searched %}
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h4 class="fw-bold mb-0">Pharmacies stocking "{{ query }}"</h4>
+        <div class="text-muted small">
+          Found <strong>{{ results|length }}</strong> matching pharmacy inventory record(s)
+        </div>
+      </div>
+      <div class="small text-muted d-none d-md-block">
+        <i class="bi bi-info-circle me-1"></i>Sorted by stock status and proximity
+      </div>
+    </div>
+
+    <!-- Freshness & Availability Notice -->
+    <div class="alert alert-light border shadow-sm py-2 px-3 small mb-4 d-flex align-items-center justify-content-between">
+      <div>
+        <i class="bi bi-clock-history text-success me-1"></i>
+        <span><strong>Inventory Freshness:</strong> Availability is based on the latest inventory information provided by registered pharmacies.</span>
+      </div>
+    </div>
+
+    {% if results|length > 0 %}
+      <div class="row g-3">
+        {% for item in results %}
+          <div class="col-12">
+            <div class="card card-custom pharmacy-result-card p-3 shadow-sm {% if item.quantity == 0 %}out-of-stock{% endif %}">
+              <div class="row align-items-center">
+                <!-- Pharmacy Info Column -->
+                <div class="col-lg-5 col-md-6 mb-3 mb-md-0">
+                  <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                      <h5 class="fw-bold mb-1">
+                        <a href="{{ url_for('medicine.pharmacy_details', pharmacy_id=item.pharmacy_id) }}" class="text-decoration-none text-dark hover-primary">
+                          {{ item.pharmacy_name }}
+                        </a>
+                      </h5>
+                      {% if item.is_demo %}
+                        <span class="demo-badge me-2">Demo Pharmacy — College Project</span>
+                      {% endif %}
+                    </div>
+
+                    {% if session.get('user_id') %}
+                      <button type="button" class="btn btn-sm {% if item.is_fav %}btn-danger active{% else %}btn-outline-danger{% endif %} rounded-circle p-1" style="width: 32px; height: 32px;" onclick="toggleFavourite({{ item.pharmacy_id }}, this)" data-fav="{{ 'true' if item.is_fav else 'false' }}" title="Save to favourites">
+                        <i class="bi {% if item.is_fav %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                      </button>
+                    {% endif %}
+                  </div>
+
+                  <div class="small text-muted mt-2">
+                    <div><i class="bi bi-geo-alt me-1 text-danger"></i>{{ item.pharmacy_address }}, {{ item.pharmacy_area }}, {{ item.pharmacy_city }}</div>
+                    <div><i class="bi bi-telephone me-1 text-primary"></i>{{ item.pharmacy_phone }}</div>
+                    <div><i class="bi bi-clock me-1 text-secondary"></i>Hours: {{ item.operating_hours }}</div>
+                  </div>
+
+                  <!-- Distance Badge -->
+                  <div class="mt-2">
+                    {% if item.has_exact_distance %}
+                      <span class="distance-badge has-dist">
+                        <i class="bi bi-cursor-fill me-1"></i><strong>{{ item.distance_km }} km</strong> away (Haversine)
+                      </span>
+                    {% elif item.is_area_match or item.is_city_match %}
+                      <span class="distance-badge">
+                        <i class="bi bi-geo me-1"></i>Area match: {{ item.pharmacy_area }}, {{ item.pharmacy_city }}
+                      </span>
+                    {% else %}
+                      <span class="distance-badge">
+                        <i class="bi bi-geo me-1"></i>Location distance unavailable
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Medicine & Stock Info Column -->
+                <div class="col-lg-4 col-md-3 mb-3 mb-md-0 border-start-md px-lg-3">
+                  <div class="fw-bold fs-5 text-success">{{ item.medicine_name }}</div>
+                  <div class="small text-muted">{{ item.strength }} &bull; {{ item.form }}</div>
+                  {% if item.brand_name %}
+                    <div class="small text-muted">Brand: <strong>{{ item.brand_name }}</strong></div>
+                  {% endif %}
+                  {% if item.prescription_required %}
+                    <span class="badge bg-danger mt-1"><i class="bi bi-file-medical me-1"></i>Prescription Required</span>
+                  {% endif %}
+
+                  <div class="mt-2">
+                    <span class="fs-5 fw-bold text-dark">{{ item.price|currency }}</span>
+                    <span class="small text-muted"> / unit</span>
+                  </div>
+                </div>
+
+                <!-- Status & Action Column -->
+                <div class="col-lg-3 col-md-3 text-md-end">
+                  <div class="mb-2">
+                    {% if item.quantity > 10 %}
+                      <span class="badge-available"><i class="bi bi-check-circle-fill me-1"></i>Available ({{ item.quantity }} in stock)</span>
+                    {% elif item.quantity >= 1 %}
+                      <span class="badge-low-stock"><i class="bi bi-exclamation-triangle-fill me-1"></i>Low Stock ({{ item.quantity }} left)</span>
+                    {% else %}
+                      <span class="badge-out-of-stock"><i class="bi bi-x-circle-fill me-1"></i>Out of Stock</span>
+                    {% endif %}
+                  </div>
+
+                  <div class="small text-muted mb-3">
+                    <i class="bi bi-clock-history me-1"></i>Last updated:<br>
+                    <strong>{{ item.formatted_updated }}</strong>
+                  </div>
+
+                  <div class="d-flex flex-column gap-2">
+                    <a href="{{ item.directions_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-map me-1"></i>Get Directions
+                    </a>
+                    <a href="{{ url_for('medicine.pharmacy_details', pharmacy_id=item.pharmacy_id) }}" class="btn btn-sm btn-primary">
+                      <i class="bi bi-shop me-1"></i>View Pharmacy
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- Empty State -->
+      <div class="card card-custom p-5 text-center my-4">
+        <i class="bi bi-capsule text-muted mb-3" style="font-size: 3.5rem;"></i>
+        <h4 class="fw-bold">No nearby pharmacy has this medicine listed in its inventory.</h4>
+        <p class="text-muted" style="max-width: 550px; margin: 0 auto;">
+          We couldn't find any approved pharmacy listing <strong>"{{ query }}"</strong>. Try searching for an alternative generic name or check popular medicines below.
+        </p>
+        <div class="mt-4">
+          <a href="{{ url_for('medicine.search', q='Paracetamol') }}" class="btn btn-outline-success me-2 mb-2">Search Paracetamol</a>
+          <a href="{{ url_for('medicine.search', q='Cetirizine') }}" class="btn btn-outline-success me-2 mb-2">Search Cetirizine</a>
+          <a href="{{ url_for('medicine.search', q='ORS') }}" class="btn btn-outline-success me-2 mb-2">Search ORS</a>
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <!-- Initial empty search landing -->
+    <div class="card card-custom p-5 text-center">
+      <i class="bi bi-search text-success mb-3" style="font-size: 3rem;"></i>
+      <h3 class="fw-bold">Search for any medicine above</h3>
+      <p class="text-muted">Enter a medicine name, brand, or generic formula to check nearby availability.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% endblock %}
