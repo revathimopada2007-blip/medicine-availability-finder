@@ -9,7 +9,7 @@ from models.pharmacy import get_pharmacy_by_id, create_pharmacy, update_pharmacy
 from models.medicine import search_medicines, get_all_medicines
 from models.inventory import (
     compute_stock_status, haversine_distance, search_nearby_pharmacies_with_medicine,
-    add_inventory_item, update_inventory_item, get_inventory_by_pharmacy
+    add_inventory_item, update_inventory_item, get_inventory_by_pharmacy, check_pharmacies_exist_in_city
 )
 from app import create_app
 
@@ -44,14 +44,50 @@ class MedicineFinderTestCase(unittest.TestCase):
             meds = get_all_medicines()
             self.assertGreaterEqual(len(meds), 4)
 
+    def test_city_based_search_and_no_leakage(self):
+        """
+        CITY-BASED SEARCH REQUIREMENT TEST:
+        - Paracetamol + Vizianagaram -> Only Vizianagaram pharmacies
+        - Paracetamol + Visakhapatnam -> Only Visakhapatnam pharmacies
+        - Paracetamol + Guntur -> Only Guntur pharmacies
+        - Paracetamol + Unknown City -> Returns empty list & no_pharmacies_in_city=True
+        - Confirms results NEVER leak across cities.
+        """
+        with self.app.app_context():
+            # 1. Vizianagaram search
+            vzm_results = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Vizianagaram')
+            self.assertGreater(len(vzm_results), 0)
+            for r in vzm_results:
+                self.assertEqual(r['pharmacy_city'].strip().lower(), 'vizianagaram', 'Leaked non-Vizianagaram pharmacy!')
+
+            # 2. Visakhapatnam search
+            vsk_results = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Visakhapatnam')
+            self.assertGreater(len(vsk_results), 0)
+            for r in vsk_results:
+                self.assertEqual(r['pharmacy_city'].strip().lower(), 'visakhapatnam', 'Leaked non-Visakhapatnam pharmacy!')
+
+            # 3. Guntur search
+            gnt_results = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Guntur')
+            self.assertGreater(len(gnt_results), 0)
+            for r in gnt_results:
+                self.assertEqual(r['pharmacy_city'].strip().lower(), 'guntur', 'Leaked non-Guntur pharmacy!')
+
+            # 4. Unknown city with no pharmacies
+            has_hyd, hyd_count = check_pharmacies_exist_in_city('Hyderabad')
+            self.assertFalse(has_hyd)
+            self.assertEqual(hyd_count, 0)
+            hyd_results = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Hyderabad')
+            self.assertEqual(len(hyd_results), 0)
+
+            # 5. Case-insensitivity check ('guntur', 'GUNTUR', '  guntur  ')
+            gnt_lower = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='guntur')
+            self.assertEqual(len(gnt_results), len(gnt_lower))
+
     def test_haversine_distance_calculation(self):
         """Test exact geometric distance calculation using Haversine formula."""
-        # Vizianagaram (18.1067, 83.3956) to Cantonment (18.1120, 83.4010) ~ 0.82 km
         dist = haversine_distance(18.1067, 83.3956, 18.1120, 83.4010)
         self.assertIsNotNone(dist)
         self.assertAlmostEqual(dist, 0.82, delta=0.2)
-
-        # None handling
         self.assertIsNone(haversine_distance(None, 83.3956, 18.1120, 83.4010))
 
     def test_stock_status_computation(self):
@@ -70,7 +106,6 @@ class MedicineFinderTestCase(unittest.TestCase):
 
     def test_user_authentication_flow(self):
         """Test registration, secure hashing, login, and logout."""
-        # Register new user
         reg_res = self.client.post('/register', data={
             'name': 'Test Student',
             'email': 'student@test.com',
@@ -81,7 +116,6 @@ class MedicineFinderTestCase(unittest.TestCase):
         }, follow_redirects=True)
         self.assertEqual(reg_res.status_code, 200)
 
-        # Verify password is encrypted in database
         with self.app.app_context():
             user = get_user_by_email('student@test.com')
             self.assertIsNotNone(user)
@@ -89,17 +123,14 @@ class MedicineFinderTestCase(unittest.TestCase):
             self.assertTrue(verify_user_password(user['password_hash'], 'Password@123'))
             self.assertFalse(verify_user_password(user['password_hash'], 'WrongPassword'))
 
-        # Login with valid credentials
         login_res = self.client.post('/login', data={
             'email': 'student@test.com',
             'password': 'Password@123'
         }, follow_redirects=True)
         self.assertIn(b'Test Student', login_res.data)
 
-        # Logout
         self.client.get('/logout', follow_redirects=True)
 
-        # Login with invalid credentials
         bad_login = self.client.post('/login', data={
             'email': 'student@test.com',
             'password': 'WrongPassword'
@@ -108,14 +139,13 @@ class MedicineFinderTestCase(unittest.TestCase):
 
     def test_end_to_end_inventory_flow(self):
         """
-        CRITICAL TEST (Problem 20 & 42):
+        CRITICAL TEST:
         1. Pharmacy adds Paracetamol 500mg, Qty: 20, Price: ₹25.
         2. User searches 'Paracetamol' -> Sees Available & ₹25.
         3. Pharmacy changes quantity 20 -> 0.
         4. User searches 'Paracetamol' -> Sees Out of Stock & updated timestamp.
         """
         with self.app.app_context():
-            # Step 1: Pharmacy Democare (id 1)
             pharmacy_user = get_user_by_email('democare@pharmacy.com')
             conn = get_db_connection()
             pharmacy_row = conn.execute("SELECT id FROM pharmacies WHERE user_id = ?", (pharmacy_user['id'],)).fetchone()
@@ -124,11 +154,9 @@ class MedicineFinderTestCase(unittest.TestCase):
             med_id = med_row['id']
             conn.close()
 
-            # Set initial stock: Qty 20, Price 25.00
             add_inventory_item(pharmacy_id, med_id, price=25.00, quantity=20, expiry_date='2027-10-31')
 
-            # Step 2: Search Paracetamol from user perspective
-            results_1 = search_nearby_pharmacies_with_medicine('Paracetamol')
+            results_1 = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Vizianagaram')
             demo_match = next((r for r in results_1 if r['pharmacy_id'] == pharmacy_id), None)
             self.assertIsNotNone(demo_match)
             self.assertEqual(demo_match['quantity'], 20)
@@ -136,42 +164,35 @@ class MedicineFinderTestCase(unittest.TestCase):
             self.assertEqual(demo_match['stock_info']['code'], 'available')
             time_1 = demo_match['last_updated']
 
-            # Step 3: Pharmacy changes quantity 20 -> 0
-            time.sleep(1) # Ensure timestamp tick
+            time.sleep(1)
             inv_row = get_inventory_by_pharmacy(pharmacy_id)
             paracetamol_inv = next(i for i in inv_row if i['medicine_id'] == med_id)
             success, err = update_inventory_item(paracetamol_inv['id'], pharmacy_id, price=25.00, quantity=0, expiry_date='2027-10-31')
             self.assertTrue(success)
 
-            # Step 4: User searches Paracetamol again
-            results_2 = search_nearby_pharmacies_with_medicine('Paracetamol')
+            results_2 = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Vizianagaram')
             demo_match_2 = next((r for r in results_2 if r['pharmacy_id'] == pharmacy_id), None)
             self.assertIsNotNone(demo_match_2)
             self.assertEqual(demo_match_2['quantity'], 0)
             self.assertEqual(demo_match_2['stock_info']['code'], 'out_of_stock')
             time_2 = demo_match_2['last_updated']
-            self.assertNotEqual(time_1, time_2, "Last updated timestamp must be refreshed on change")
+            self.assertNotEqual(time_1, time_2)
 
     def test_pharmacy_admin_approval_gate(self):
         """Test that new pending pharmacy does NOT show in search until admin approves."""
         with self.app.app_context():
-            # Create user and pending pharmacy
             u_id, _ = create_user('New Pharmacy Owner', 'newpharm@test.com', '9998887770', 'Pass@123', role='pharmacy', city='Vizianagaram')
             p_id, _ = create_pharmacy(u_id, 'New Pending Meds', 'New Pharmacy Owner', '9998887770', 'newpharm@test.com', 'Main Rd', 'Center', 'Vizianagaram', 'AP', '535002', status='pending')
 
-            # Add medicine to its inventory
             med = search_medicines('Paracetamol')[0]
             add_inventory_item(p_id, med['id'], price=30.00, quantity=50)
 
-            # Search Paracetamol -> New Pending Meds should NOT appear
-            results = search_nearby_pharmacies_with_medicine('Paracetamol')
+            results = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Vizianagaram')
             self.assertFalse(any(r['pharmacy_id'] == p_id for r in results))
 
-            # Admin approves pharmacy
             update_pharmacy_status(p_id, 'approved')
 
-            # Search Paracetamol again -> New Pending Meds SHOULD appear now
-            results_approved = search_nearby_pharmacies_with_medicine('Paracetamol')
+            results_approved = search_nearby_pharmacies_with_medicine('Paracetamol', user_city='Vizianagaram')
             self.assertTrue(any(r['pharmacy_id'] == p_id for r in results_approved))
 
     def test_pharmacy_isolation_security(self):
@@ -185,7 +206,6 @@ class MedicineFinderTestCase(unittest.TestCase):
             inv_a = get_inventory_by_pharmacy(pharm_a_id)[0]
             conn.close()
 
-            # Attempt Pharmacy B updating Pharmacy A's item
             success, err = update_inventory_item(inv_a['id'], pharmacy_id=pharm_b_id, price=1.00, quantity=999)
             self.assertFalse(success)
             self.assertIn('unauthorized', err.lower())

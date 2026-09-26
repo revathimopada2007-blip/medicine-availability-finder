@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container py-4">
-  <!-- Search Bar Header on Search Page -->
+  <!-- Search Bar Header -->
   <div class="card card-custom p-3 mb-4 shadow-sm">
     <form id="medicine-search-form" action="{{ url_for('medicine.search') }}" method="GET">
       <div class="row g-2 align-items-center">
@@ -19,7 +19,7 @@
         <div class="col-lg-4">
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-geo-alt text-muted"></i></span>
-            <input type="text" name="city" class="form-control" placeholder="City or Area" value="{{ user_city or '' }}">
+            <input type="text" name="city" class="form-control" placeholder="City (e.g. Vizianagaram, Visakhapatnam, Guntur)" value="{{ user_city or '' }}">
           </div>
         </div>
 
@@ -36,12 +36,12 @@
           <i class="bi bi-crosshair me-1"></i>Use GPS Location
         </button>
         <div id="location-status-text" class="text-muted">
-          {% if user_lat and user_lng %}
+          {% if user_city %}
+            <span><i class="bi bi-geo-alt-fill text-success me-1"></i>Filtered by city: <strong>{{ user_city }}</strong></span>
+          {% elif user_lat and user_lng %}
             <span class="text-success"><i class="bi bi-geo-alt-fill me-1"></i>Using coordinates ({{ user_lat|round(4) }}, {{ user_lng|round(4) }})</span>
-          {% elif user_city %}
-            <span><i class="bi bi-geo-alt me-1"></i>Searching near: <strong>{{ user_city }}</strong></span>
           {% else %}
-            <span><i class="bi bi-info-circle me-1"></i>Exact distance calculation requires GPS coordinates or city</span>
+            <span><i class="bi bi-info-circle me-1"></i>Enter a city above to filter pharmacies by city</span>
           {% endif %}
         </div>
       </div>
@@ -49,27 +49,57 @@
   </div>
 
   {% if has_searched %}
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div>
-        <h4 class="fw-bold mb-0">Pharmacies stocking "{{ query }}"</h4>
-        <div class="text-muted small">
-          Found <strong>{{ results|length }}</strong> matching pharmacy inventory record(s)
+    <!-- Case 1: No registered pharmacies in the specified city -->
+    {% if no_pharmacies_in_city %}
+      <div class="card card-custom p-5 text-center my-4 border-warning shadow-sm">
+        <div class="stat-icon yellow mx-auto mb-3" style="width: 64px; height: 64px; font-size: 2rem;">
+          <i class="bi bi-geo-alt-fill"></i>
+        </div>
+        <h3 class="fw-bold text-dark mb-2">No Participating Pharmacies Found</h3>
+        <p class="text-muted fs-5 mb-4" style="max-width: 620px; margin: 0 auto;">
+          There are currently no pharmacies registered with Medicine Availability Finder in <strong>{{ user_city }}</strong>. Try searching another city or check back later.
+        </p>
+        <div class="p-3 bg-light rounded d-inline-block mx-auto border">
+          <span class="text-muted small fw-semibold d-block mb-2">Search registered demo cities:</span>
+          <a href="{{ url_for('medicine.search', q=query, city='Vizianagaram') }}" class="btn btn-sm btn-outline-success me-2 mb-1">
+            <i class="bi bi-search me-1"></i>Vizianagaram
+          </a>
+          <a href="{{ url_for('medicine.search', q=query, city='Visakhapatnam') }}" class="btn btn-sm btn-outline-success me-2 mb-1">
+            <i class="bi bi-search me-1"></i>Visakhapatnam
+          </a>
+          <a href="{{ url_for('medicine.search', q=query, city='Guntur') }}" class="btn btn-sm btn-outline-success me-2 mb-1">
+            <i class="bi bi-search me-1"></i>Guntur
+          </a>
+          <a href="{{ url_for('medicine.search', q=query) }}" class="btn btn-sm btn-outline-secondary mb-1">
+            <i class="bi bi-globe me-1"></i>All Cities
+          </a>
         </div>
       </div>
-      <div class="small text-muted d-none d-md-block">
-        <i class="bi bi-info-circle me-1"></i>Sorted by stock status and proximity
-      </div>
-    </div>
 
-    <!-- Freshness & Availability Notice -->
-    <div class="alert alert-light border shadow-sm py-2 px-3 small mb-4 d-flex align-items-center justify-content-between">
-      <div>
-        <i class="bi bi-clock-history text-success me-1"></i>
-        <span><strong>Inventory Freshness:</strong> Availability is based on the latest inventory information provided by registered pharmacies.</span>
+    <!-- Case 2: Pharmacies exist in that city and matching stock was found -->
+    {% elif results|length > 0 %}
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h4 class="fw-bold mb-0">
+            Pharmacies stocking "{{ query }}" {% if user_city %}in <strong>{{ user_city }}</strong>{% endif %}
+          </h4>
+          <div class="text-muted small">
+            Found <strong>{{ results|length }}</strong> matching pharmacy inventory record(s) in {{ user_city if user_city else 'registered pharmacies' }}
+          </div>
+        </div>
+        <div class="small text-muted d-none d-md-block">
+          <i class="bi bi-info-circle me-1"></i>Sorted by stock availability & proximity
+        </div>
       </div>
-    </div>
 
-    {% if results|length > 0 %}
+      <!-- Freshness Notice -->
+      <div class="alert alert-light border shadow-sm py-2 px-3 small mb-4 d-flex align-items-center justify-content-between">
+        <div>
+          <i class="bi bi-clock-history text-success me-1"></i>
+          <span><strong>Inventory Freshness:</strong> Availability is based on the latest inventory information provided by registered pharmacies.</span>
+        </div>
+      </div>
+
       <div class="row g-3">
         {% for item in results %}
           <div class="col-12">
@@ -97,7 +127,7 @@
                   </div>
 
                   <div class="small text-muted mt-2">
-                    <div><i class="bi bi-geo-alt me-1 text-danger"></i>{{ item.pharmacy_address }}, {{ item.pharmacy_area }}, {{ item.pharmacy_city }}</div>
+                    <div><i class="bi bi-geo-alt me-1 text-danger"></i>{{ item.pharmacy_address }}, {{ item.pharmacy_area }}, <strong>{{ item.pharmacy_city }}</strong></div>
                     <div><i class="bi bi-telephone me-1 text-primary"></i>{{ item.pharmacy_phone }}</div>
                     <div><i class="bi bi-clock me-1 text-secondary"></i>Hours: {{ item.operating_hours }}</div>
                   </div>
@@ -108,13 +138,9 @@
                       <span class="distance-badge has-dist">
                         <i class="bi bi-cursor-fill me-1"></i><strong>{{ item.distance_km }} km</strong> away (Haversine)
                       </span>
-                    {% elif item.is_area_match or item.is_city_match %}
-                      <span class="distance-badge">
-                        <i class="bi bi-geo me-1"></i>Area match: {{ item.pharmacy_area }}, {{ item.pharmacy_city }}
-                      </span>
                     {% else %}
                       <span class="distance-badge">
-                        <i class="bi bi-geo me-1"></i>Location distance unavailable
+                        <i class="bi bi-geo me-1"></i>Location: {{ item.pharmacy_city }}
                       </span>
                     {% endif %}
                   </div>
@@ -168,28 +194,29 @@
           </div>
         {% endfor %}
       </div>
+
+    <!-- Case 3: Pharmacies exist in city, but none currently stock the searched medicine -->
     {% else %}
-      <!-- Empty State -->
-      <div class="card card-custom p-5 text-center my-4">
+      <div class="card card-custom p-5 text-center my-4 shadow-sm">
         <i class="bi bi-capsule text-muted mb-3" style="font-size: 3.5rem;"></i>
-        <h4 class="fw-bold">No nearby pharmacy has this medicine listed in its inventory.</h4>
+        <h4 class="fw-bold">No nearby pharmacy {% if user_city %}in <strong>{{ user_city }}</strong>{% endif %} has this medicine listed in its inventory.</h4>
         <p class="text-muted" style="max-width: 550px; margin: 0 auto;">
-          We couldn't find any approved pharmacy listing <strong>"{{ query }}"</strong>. Try searching for an alternative generic name or check popular medicines below.
+          We couldn't find any pharmacy in {{ user_city if user_city else 'the database' }} listing <strong>"{{ query }}"</strong>. Try searching for an alternative generic name or search in another city.
         </p>
         <div class="mt-4">
-          <a href="{{ url_for('medicine.search', q='Paracetamol') }}" class="btn btn-outline-success me-2 mb-2">Search Paracetamol</a>
-          <a href="{{ url_for('medicine.search', q='Cetirizine') }}" class="btn btn-outline-success me-2 mb-2">Search Cetirizine</a>
-          <a href="{{ url_for('medicine.search', q='ORS') }}" class="btn btn-outline-success me-2 mb-2">Search ORS</a>
+          <a href="{{ url_for('medicine.search', q='Paracetamol', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Paracetamol</a>
+          <a href="{{ url_for('medicine.search', q='Cetirizine', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Cetirizine</a>
+          <a href="{{ url_for('medicine.search', q='ORS', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search ORS</a>
         </div>
       </div>
     {% endif %}
 
   {% else %}
     <!-- Initial empty search landing -->
-    <div class="card card-custom p-5 text-center">
+    <div class="card card-custom p-5 text-center shadow-sm">
       <i class="bi bi-search text-success mb-3" style="font-size: 3rem;"></i>
       <h3 class="fw-bold">Search for any medicine above</h3>
-      <p class="text-muted">Enter a medicine name, brand, or generic formula to check nearby availability.</p>
+      <p class="text-muted">Enter a medicine name, brand, or generic formula and optional city to check availability.</p>
     </div>
   {% endif %}
 </div>

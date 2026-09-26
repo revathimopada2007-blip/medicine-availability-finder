@@ -3,11 +3,6 @@ from datetime import datetime
 from database import get_db_connection
 
 def compute_stock_status(quantity):
-    """
-    Quantity > 10 => Available
-    Quantity 1..10 => Low Stock
-    Quantity == 0 => Out of Stock
-    """
     qty = int(quantity) if quantity is not None else 0
     if qty > 10:
         return {
@@ -35,12 +30,11 @@ def compute_stock_status(quantity):
         }
 
 def haversine_distance(lat1, lon1, lat2, lon2):
-    """Calculates the great circle distance in kilometers between two points on Earth."""
     try:
         if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
             return None
         lat1, lon1, lat2, lon2 = float(lat1), float(lon1), float(lat2), float(lon2)
-        R = 6371.0 # Earth radius in kilometers
+        R = 6371.0
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
@@ -53,11 +47,24 @@ def format_timestamp(ts_str):
     if not ts_str:
         return "Unknown"
     try:
-        # Handles SQLite 'YYYY-MM-DD HH:MM:SS'
         dt = datetime.strptime(str(ts_str).split('.')[0], '%Y-%m-%d %H:%M:%S')
         return dt.strftime('%d %b %Y, %I:%M %p')
     except Exception:
         return str(ts_str)
+
+def check_pharmacies_exist_in_city(city):
+    """Checks if any approved pharmacy is registered in the given city dynamically."""
+    if not city or not city.strip():
+        return True, 0
+    conn = get_db_connection()
+    clean_city = city.strip().lower()
+    row = conn.execute("""
+    SELECT COUNT(*) as c FROM pharmacies 
+    WHERE status = 'approved' AND LOWER(TRIM(city)) = ?
+    """, (clean_city,)).fetchone()
+    conn.close()
+    count = row['c'] if row else 0
+    return count > 0, count
 
 def get_inventory_by_pharmacy(pharmacy_id):
     conn = get_db_connection()
@@ -173,17 +180,15 @@ def get_pharmacy_dashboard_stats(pharmacy_id):
 
 def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_lng=None, user_city=None, user_area=None, user_pincode=None):
     """
-    Core search engine:
-    1. Finds medicines matching query (name, generic, brand, strength, form).
-    2. Searches inventory of APPROVED pharmacies.
-    3. Calculates real Haversine distance if coordinates are present.
-    4. Evaluates area/city match when coordinates are unavailable or as secondary signal.
-    5. Returns enriched records sorted by distance / stock availability.
+    DYNAMIC CITY-BASED SEARCH ENGINE:
+    - Queries database by BOTH medicine query and pharmacy city dynamically.
+    - If user_city is provided, STRICTLY filters by that city in SQL: NO cross-city leakage.
+    - If no city is specified, queries across approved pharmacies and sorts by proximity/stock.
     """
     conn = get_db_connection()
     term = f"%{medicine_query.strip()}%"
 
-    sql = """
+    base_sql = """
     SELECT 
         i.id as inventory_id,
         i.price,
@@ -218,7 +223,15 @@ def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_l
     WHERE p.status = 'approved'
       AND (m.name LIKE ? OR m.generic_name LIKE ? OR m.brand_name LIKE ? OR m.strength LIKE ? OR m.form LIKE ?)
     """
-    rows = conn.execute(sql, (term, term, term, term, term)).fetchall()
+
+    params = [term, term, term, term, term]
+
+    # Strict dynamic city filter when city is specified by user
+    if user_city and user_city.strip():
+        base_sql += " AND LOWER(TRIM(p.city)) = LOWER(TRIM(?))"
+        params.append(user_city.strip())
+
+    rows = conn.execute(base_sql, tuple(params)).fetchall()
     conn.close()
 
     results = []
@@ -229,7 +242,6 @@ def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_l
         item['stock_info'] = compute_stock_status(item['quantity'])
         item['formatted_updated'] = format_timestamp(item['last_updated'])
 
-        # Distance calculation
         dist = None
         if has_user_coords and item['pharmacy_lat'] is not None and item['pharmacy_lng'] is not None:
             dist = haversine_distance(user_lat, user_lng, item['pharmacy_lat'], item['pharmacy_lng'])
@@ -237,7 +249,6 @@ def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_l
         item['distance_km'] = dist
         item['has_exact_distance'] = dist is not None
 
-        # Check area / city matching
         is_area_match = False
         is_city_match = False
         if user_area and item['pharmacy_area'] and user_area.strip().lower() in item['pharmacy_area'].strip().lower():
@@ -248,8 +259,6 @@ def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_l
         item['is_area_match'] = is_area_match
         item['is_city_match'] = is_city_match
 
-        # Map / Direction link
-        # Use query with address + pharmacy name or lat/lng for accurate directions without API keys
         if item['pharmacy_lat'] and item['pharmacy_lng']:
             item['map_url'] = f"https://www.google.com/maps/search/?api=1&query={item['pharmacy_lat']},{item['pharmacy_lng']}"
             item['directions_url'] = f"https://www.google.com/maps/dir/?api=1&destination={item['pharmacy_lat']},{item['pharmacy_lng']}"
@@ -262,12 +271,7 @@ def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_l
 
         results.append(item)
 
-    # Sort results:
-    # 1. Available stock first
-    # 2. If distance available, sort by distance ascending
-    # 3. Else sort by city/area match, then price ascending
     def sort_key(x):
-        # Stock priority: available (0), low stock (1), out of stock (2)
         stock_rank = 0 if x['quantity'] > 10 else (1 if x['quantity'] > 0 else 2)
         dist_rank = x['distance_km'] if x['distance_km'] is not None else 999999.0
         area_rank = 0 if (x['is_area_match'] or x['is_city_match']) else 1

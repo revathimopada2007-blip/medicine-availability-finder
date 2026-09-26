@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, session, jsonify
 from models.medicine import search_medicines, get_medicine_by_id, get_all_medicines
 from models.inventory import (
-    search_nearby_pharmacies_with_medicine, get_medicine_stock_across_pharmacies, get_inventory_by_pharmacy
+    search_nearby_pharmacies_with_medicine, get_medicine_stock_across_pharmacies, 
+    get_inventory_by_pharmacy, check_pharmacies_exist_in_city
 )
 from models.pharmacy import get_pharmacy_by_id
 from models.user import get_user_by_id
@@ -21,45 +22,51 @@ def index():
 @medicine_bp.route('/search')
 def search():
     query = request.args.get('q', '').strip()
+    user_city = request.args.get('city', '').strip()
     user_lat = request.args.get('lat')
     user_lng = request.args.get('lng')
-    user_city = request.args.get('city')
     user_area = request.args.get('area')
     user_pincode = request.args.get('pincode')
 
     current_user = None
-    # If user logged in and params not explicitly in URL, use user's saved location
     if 'user_id' in session:
         current_user = get_user_by_id(session['user_id'])
         if current_user:
+            if not user_city and current_user.get('city'):
+                user_city = current_user['city']
             if not user_lat and current_user.get('latitude'):
                 user_lat = current_user['latitude']
             if not user_lng and current_user.get('longitude'):
                 user_lng = current_user['longitude']
-            if not user_city and current_user.get('city'):
-                user_city = current_user['city']
             if not user_area and current_user.get('area'):
                 user_area = current_user['area']
             if not user_pincode and current_user.get('pincode'):
                 user_pincode = current_user['pincode']
 
-        # Save search query in history if user is logged in
         if query:
             save_search_query(session['user_id'], query)
 
     results = []
     has_searched = bool(query)
-    if query:
-        results = search_nearby_pharmacies_with_medicine(
-            medicine_query=query,
-            user_lat=user_lat,
-            user_lng=user_lng,
-            user_city=user_city,
-            user_area=user_area,
-            user_pincode=user_pincode
-        )
+    no_pharmacies_in_city = False
 
-        # Mark favourite flag for logged-in user
+    if query:
+        # Check if city filter is provided and whether any pharmacy is registered in that city
+        if user_city:
+            has_pharmacies, count = check_pharmacies_exist_in_city(user_city)
+            if not has_pharmacies:
+                no_pharmacies_in_city = True
+
+        if not no_pharmacies_in_city:
+            results = search_nearby_pharmacies_with_medicine(
+                medicine_query=query,
+                user_lat=user_lat,
+                user_lng=user_lng,
+                user_city=user_city,
+                user_area=user_area,
+                user_pincode=user_pincode
+            )
+
         if 'user_id' in session:
             for r in results:
                 r['is_fav'] = is_favourite(session['user_id'], r['pharmacy_id'])
@@ -72,6 +79,7 @@ def search():
         query=query,
         results=results,
         has_searched=has_searched,
+        no_pharmacies_in_city=no_pharmacies_in_city,
         user_lat=user_lat,
         user_lng=user_lng,
         user_city=user_city,
@@ -96,7 +104,6 @@ def medicine_details(medicine_id):
 
     pharmacies_stock = get_medicine_stock_across_pharmacies(medicine_id, user_lat=user_lat, user_lng=user_lng)
     
-    # Check favourite flags
     if 'user_id' in session:
         for p in pharmacies_stock:
             p['is_fav'] = is_favourite(session['user_id'], p['pharmacy_id'])
@@ -117,7 +124,6 @@ def pharmacy_details(pharmacy_id):
     if 'user_id' in session:
         is_fav = is_favourite(session['user_id'], pharmacy_id)
 
-    # Directions link
     if pharmacy['latitude'] and pharmacy['longitude']:
         directions_url = f"https://www.google.com/maps/dir/?api=1&destination={pharmacy['latitude']},{pharmacy['longitude']}"
     else:
@@ -142,30 +148,39 @@ def api_nearby_search():
     if not query:
         return jsonify({'results': [], 'message': 'Search query is required.'})
 
+    user_city = request.args.get('city', '').strip()
     user_lat = request.args.get('lat')
     user_lng = request.args.get('lng')
-    user_city = request.args.get('city')
     user_area = request.args.get('area')
     user_pincode = request.args.get('pincode')
 
     if 'user_id' in session:
         u = get_user_by_id(session['user_id'])
         if u:
+            if not user_city and u.get('city'):
+                user_city = u['city']
             user_lat = user_lat or u.get('latitude')
             user_lng = user_lng or u.get('longitude')
-            user_city = user_city or u.get('city')
             user_area = user_area or u.get('area')
             user_pincode = user_pincode or u.get('pincode')
         save_search_query(session['user_id'], query)
 
-    results = search_nearby_pharmacies_with_medicine(
-        medicine_query=query,
-        user_lat=user_lat,
-        user_lng=user_lng,
-        user_city=user_city,
-        user_area=user_area,
-        user_pincode=user_pincode
-    )
+    no_pharmacies_in_city = False
+    if user_city:
+        has_pharmacies, count = check_pharmacies_exist_in_city(user_city)
+        if not has_pharmacies:
+            no_pharmacies_in_city = True
+
+    results = []
+    if not no_pharmacies_in_city:
+        results = search_nearby_pharmacies_with_medicine(
+            medicine_query=query,
+            user_lat=user_lat,
+            user_lng=user_lng,
+            user_city=user_city,
+            user_area=user_area,
+            user_pincode=user_pincode
+        )
 
     if 'user_id' in session:
         for r in results:
@@ -173,6 +188,8 @@ def api_nearby_search():
 
     return jsonify({
         'query': query,
+        'city': user_city,
+        'no_pharmacies_in_city': no_pharmacies_in_city,
         'count': len(results),
         'results': results
     })

@@ -156,6 +156,7 @@ def seed_demo_data(db_path=None):
     conn = get_db_connection(db_path)
     cursor = conn.cursor()
 
+    # Admin Account
     cursor.execute("SELECT id FROM users WHERE email = ?", ('admin@medfinder.com',))
     if cursor.fetchone() is None:
         cursor.execute("""
@@ -176,6 +177,7 @@ def seed_demo_data(db_path=None):
             83.4000
         ))
 
+    # Demo User
     cursor.execute("SELECT id FROM users WHERE email = ?", ('user@medfinder.com',))
     if cursor.fetchone() is None:
         cursor.execute("""
@@ -196,7 +198,9 @@ def seed_demo_data(db_path=None):
             83.3956
         ))
 
+    # Multi-City Demo Pharmacies (Vizianagaram, Visakhapatnam, Guntur)
     demo_pharmacies = [
+        # Vizianagaram
         {
             'user_email': 'democare@pharmacy.com',
             'name': 'Dr. Rajesh Kumar',
@@ -255,6 +259,53 @@ def seed_demo_data(db_path=None):
             'lat': 18.1250,
             'lng': 83.3850,
             'hours': '8:00 AM - 10:00 PM',
+            'status': 'approved'
+        },
+        # Visakhapatnam
+        {
+            'user_email': 'vizagcare@pharmacy.com',
+            'name': 'K. Satish',
+            'phone': '+91 8912556677',
+            'pharmacy_name': 'Vizag MedPlus Care',
+            'address': 'Shop 8, Siripuram Junction',
+            'area': 'Siripuram',
+            'city': 'Visakhapatnam',
+            'state': 'Andhra Pradesh',
+            'pincode': '530003',
+            'lat': 17.7231,
+            'lng': 83.3156,
+            'hours': '24 Hours Open',
+            'status': 'approved'
+        },
+        {
+            'user_email': 'coastal@pharmacy.com',
+            'name': 'P. Lakshmi',
+            'phone': '+91 8912778899',
+            'pharmacy_name': 'Coastal Health Pharmacy',
+            'address': 'D.No 4-50, Beach Road Walkway',
+            'area': 'Beach Road',
+            'city': 'Visakhapatnam',
+            'state': 'Andhra Pradesh',
+            'pincode': '530002',
+            'lat': 17.7120,
+            'lng': 83.3240,
+            'hours': '8:00 AM - 11:00 PM',
+            'status': 'approved'
+        },
+        # Guntur
+        {
+            'user_email': 'gunturmed@pharmacy.com',
+            'name': 'M. Srinivasa Rao',
+            'phone': '+91 8632334455',
+            'pharmacy_name': 'Guntur MediLife Pharmacy',
+            'address': '12-1-4, Lakshmipuram Main Road',
+            'area': 'Lakshmipuram',
+            'city': 'Guntur',
+            'state': 'Andhra Pradesh',
+            'pincode': '522007',
+            'lat': 16.3067,
+            'lng': 80.4365,
+            'hours': '7:00 AM - 11:00 PM',
             'status': 'approved'
         }
     ]
@@ -335,6 +386,7 @@ def seed_demo_data(db_path=None):
     now_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     initial_inventory = [
+        # Vizianagaram
         ('DemoCare Pharmacy', 'Paracetamol', '500mg', 25.00, 20, '2027-10-31'),
         ('DemoCare Pharmacy', 'Cetirizine', '10mg', 18.00, 50, '2027-08-15'),
         ('DemoCare Pharmacy', 'Ibuprofen', '400mg', 35.00, 8, '2026-12-31'),
@@ -353,7 +405,20 @@ def seed_demo_data(db_path=None):
         ('Student Health Pharmacy', 'Paracetamol', '500mg', 22.00, 35, '2027-12-31'),
         ('Student Health Pharmacy', 'ORS', '21.8g Sachet', 20.00, 100, '2028-08-30'),
         ('Student Health Pharmacy', 'Cetirizine', '10mg', 16.00, 15, '2027-10-15'),
-        ('Student Health Pharmacy', 'Amlodipine', '5mg', 32.00, 20, '2027-05-15')
+        ('Student Health Pharmacy', 'Amlodipine', '5mg', 32.00, 20, '2027-05-15'),
+
+        # Visakhapatnam
+        ('Vizag MedPlus Care', 'Paracetamol', '500mg', 24.50, 40, '2027-12-15'),
+        ('Vizag MedPlus Care', 'Cetirizine', '10mg', 19.00, 30, '2027-09-20'),
+        ('Vizag MedPlus Care', 'ORS', '21.8g Sachet', 22.00, 50, '2028-06-30'),
+        ('Coastal Health Pharmacy', 'Paracetamol', '500mg', 26.00, 15, '2027-11-10'),
+        ('Coastal Health Pharmacy', 'Pantoprazole', '40mg', 42.00, 20, '2027-08-15'),
+        ('Coastal Health Pharmacy', 'Amoxicillin', '500mg', 70.00, 10, '2027-04-30'),
+
+        # Guntur
+        ('Guntur MediLife Pharmacy', 'Paracetamol', '500mg', 23.00, 25, '2027-10-15'),
+        ('Guntur MediLife Pharmacy', 'Cetirizine', '10mg', 17.00, 40, '2027-07-30'),
+        ('Guntur MediLife Pharmacy', 'ORS', '21.8g Sachet', 21.00, 60, '2028-04-20')
     ]
 
     for p_name, m_name, m_strength, price, qty, expiry in initial_inventory:
