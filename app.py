@@ -1,16 +1,29 @@
 import os
+import sys
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from flask import Flask, render_template, session
 from config import Config
 from database import init_db, seed_demo_data
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(BASE_DIR, 'templates'),
+        static_folder=os.path.join(BASE_DIR, 'static')
+    )
     app.config.from_object(config_class)
 
-    # Initialize Database & Seed demo data on launch
+    # Initialize Database & Seed demo data safely
     with app.app_context():
-        init_db()
-        seed_demo_data()
+        try:
+            init_db()
+            seed_demo_data()
+        except Exception as e:
+            print(f"Notice during DB init/seed: {e}")
 
     # Register Blueprints
     from routes.auth import auth_bp

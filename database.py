@@ -1,19 +1,37 @@
 import os
+import shutil
 import sqlite3
+import tempfile
 from datetime import datetime
 from werkzeug.security import generate_password_hash
-from config import Config
+from config import Config, BASE_DIR
 
 def get_db_connection(db_path=None):
     if db_path is None:
         try:
             from flask import current_app
-            if current_app:
-                db_path = current_app.config.get('DATABASE_PATH', Config.DATABASE_PATH)
+            if current_app and 'DATABASE_PATH' in current_app.config:
+                db_path = current_app.config['DATABASE_PATH']
             else:
                 db_path = Config.DATABASE_PATH
         except Exception:
             db_path = Config.DATABASE_PATH
+
+    # On Vercel serverless environment, copy pre-seeded database to /tmp if not present
+    is_serverless = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or os.environ.get('VERCEL_ENV'))
+    if is_serverless and not os.path.exists(db_path):
+        bundled_db = os.path.join(BASE_DIR, 'instance', 'medicine_finder.db')
+        target_dir = os.path.dirname(db_path)
+        if target_dir:
+            os.makedirs(target_dir, exist_ok=True)
+        if os.path.exists(bundled_db) and os.path.getsize(bundled_db) > 0:
+            try:
+                shutil.copy2(bundled_db, db_path)
+            except Exception:
+                pass
+        if not os.path.exists(db_path) or os.path.getsize(db_path) == 0:
+            init_db(db_path)
+            seed_demo_data(db_path)
 
     db_dir = os.path.dirname(db_path)
     if db_dir:
