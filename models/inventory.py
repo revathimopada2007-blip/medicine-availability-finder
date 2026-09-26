@@ -2,6 +2,16 @@ import math
 from datetime import datetime
 from database import get_db_connection
 
+# Known sub-areas of major metropolitan cities for smart hierarchical matching
+HYDERABAD_AREAS = [
+    'hyderabad', 'secunderabad', 'kukatpally', 'kphb', 'miyapur', 'kondapur', 
+    'gachibowli', 'madhapur', 'hitech city', 'jubilee hills', 'banjara hills', 
+    'ameerpet', 'begumpet', 'punjagutta', 'mehdipatnam', 'tolichowki', 'attapur', 
+    'lb nagar', 'dilsukhnagar', 'nagole', 'uppal', 'habsiguda', 'tarnaka', 
+    'malkajgiri', 'alwal', 'bowenpally', 'manikonda', 'narsingi', 'rajendranagar', 
+    'shamshabad', 'bachupally', 'chandanagar', 'lingampally', 'tellapur'
+]
+
 def compute_stock_status(quantity):
     qty = int(quantity) if quantity is not None else 0
     if qty > 10:
@@ -52,16 +62,33 @@ def format_timestamp(ts_str):
     except Exception:
         return str(ts_str)
 
-def check_pharmacies_exist_in_city(city):
-    """Checks if any approved pharmacy is registered in the given city dynamically."""
-    if not city or not city.strip():
+def check_pharmacies_exist_in_city(city_query):
+    """
+    Checks if any approved pharmacy is registered in the given city or area.
+    Never hardcodes cities; queries the SQLite database directly.
+    """
+    if not city_query or not city_query.strip():
         return True, 0
+
     conn = get_db_connection()
-    clean_city = city.strip().lower()
-    row = conn.execute("""
-    SELECT COUNT(*) as c FROM pharmacies 
-    WHERE status = 'approved' AND LOWER(TRIM(city)) = ?
-    """, (clean_city,)).fetchone()
+    q = city_query.strip().lower()
+    pattern = f"%{q}%"
+
+    # If queried for broad 'hyderabad', check all hyderabad/secunderabad pharmacies
+    if q in ('hyderabad', 'secunderabad'):
+        row = conn.execute("""
+        SELECT COUNT(*) as c FROM pharmacies 
+        WHERE status = 'approved' 
+          AND (LOWER(TRIM(city)) IN ('hyderabad', 'secunderabad') OR LOWER(area) LIKE ? OR LOWER(address) LIKE ?)
+        """, (pattern, pattern)).fetchone()
+    else:
+        # Check specific city or locality in area/city/address/pharmacy_name
+        row = conn.execute("""
+        SELECT COUNT(*) as c FROM pharmacies 
+        WHERE status = 'approved' 
+          AND (LOWER(TRIM(city)) = ? OR LOWER(area) LIKE ? OR LOWER(address) LIKE ? OR LOWER(pharmacy_name) LIKE ?)
+        """, (q, pattern, pattern, pattern)).fetchone()
+
     conn.close()
     count = row['c'] if row else 0
     return count > 0, count
@@ -69,7 +96,7 @@ def check_pharmacies_exist_in_city(city):
 def get_inventory_by_pharmacy(pharmacy_id):
     conn = get_db_connection()
     rows = conn.execute("""
-    SELECT i.*, m.name as medicine_name, m.generic_name, m.brand_name, m.strength, m.form, m.description, m.prescription_required
+    SELECT i.*, m.name as medicine_name, m.category, m.generic_name, m.brand_name, m.manufacturer, m.strength, m.form, m.description, m.prescription_required
     FROM inventory i
     JOIN medicines m ON i.medicine_id = m.id
     WHERE i.pharmacy_id = ?
@@ -88,7 +115,7 @@ def get_inventory_by_pharmacy(pharmacy_id):
 def get_inventory_item(inventory_id):
     conn = get_db_connection()
     row = conn.execute("""
-    SELECT i.*, m.name as medicine_name, m.generic_name, m.brand_name, m.strength, m.form, m.description, m.prescription_required,
+    SELECT i.*, m.name as medicine_name, m.category, m.generic_name, m.brand_name, m.manufacturer, m.strength, m.form, m.description, m.prescription_required,
            p.pharmacy_name, p.address as pharmacy_address, p.phone as pharmacy_phone, p.city as pharmacy_city
     FROM inventory i
     JOIN medicines m ON i.medicine_id = m.id
@@ -180,10 +207,14 @@ def get_pharmacy_dashboard_stats(pharmacy_id):
 
 def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_lng=None, user_city=None, user_area=None, user_pincode=None):
     """
-    DYNAMIC CITY-BASED SEARCH ENGINE:
-    - Queries database by BOTH medicine query and pharmacy city dynamically.
-    - If user_city is provided, STRICTLY filters by that city in SQL: NO cross-city leakage.
-    - If no city is specified, queries across approved pharmacies and sorts by proximity/stock.
+    DYNAMIC LOCATION-AWARE MEDICINE SEARCH:
+    - Queries database by BOTH medicine search query and pharmacy location.
+    - If user_city is specified:
+        * If specific city (e.g. Guntur, Vizianagaram, Visakhapatnam, Vijayawada, Tirupati, etc.),
+          STRICTLY filters only pharmacies in that city.
+        * If Hyderabad locality (e.g. Kukatpally, Gachibowli, Madhapur, Banjara Hills, etc.),
+          matches pharmacies registered in that locality.
+        * Never leaks pharmacies from other cities.
     """
     conn = get_db_connection()
     term = f"%{medicine_query.strip()}%"
@@ -197,8 +228,10 @@ def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_l
         i.last_updated,
         m.id as medicine_id,
         m.name as medicine_name,
+        m.category as medicine_category,
         m.generic_name,
         m.brand_name,
+        m.manufacturer,
         m.strength,
         m.form,
         m.description,
@@ -221,15 +254,30 @@ def search_nearby_pharmacies_with_medicine(medicine_query, user_lat=None, user_l
     JOIN medicines m ON i.medicine_id = m.id
     JOIN pharmacies p ON i.pharmacy_id = p.id
     WHERE p.status = 'approved'
-      AND (m.name LIKE ? OR m.generic_name LIKE ? OR m.brand_name LIKE ? OR m.strength LIKE ? OR m.form LIKE ?)
+      AND (m.name LIKE ? OR m.generic_name LIKE ? OR m.brand_name LIKE ? OR m.category LIKE ? OR m.strength LIKE ? OR m.form LIKE ?)
     """
 
-    params = [term, term, term, term, term]
+    params = [term, term, term, term, term, term]
 
-    # Strict dynamic city filter when city is specified by user
+    # Dynamic Location Filtering in Database
     if user_city and user_city.strip():
-        base_sql += " AND LOWER(TRIM(p.city)) = LOWER(TRIM(?))"
-        params.append(user_city.strip())
+        q_city = user_city.strip().lower()
+        pattern = f"%{q_city}%"
+        if q_city in ('hyderabad', 'secunderabad'):
+            base_sql += """ AND (
+                LOWER(TRIM(p.city)) IN ('hyderabad', 'secunderabad') 
+                OR LOWER(p.area) LIKE ? 
+                OR LOWER(p.address) LIKE ?
+            )"""
+            params.extend([pattern, pattern])
+        else:
+            base_sql += """ AND (
+                LOWER(TRIM(p.city)) = ? 
+                OR LOWER(p.area) LIKE ? 
+                OR LOWER(p.address) LIKE ? 
+                OR LOWER(p.pharmacy_name) LIKE ?
+            )"""
+            params.extend([q_city, pattern, pattern, pattern])
 
     rows = conn.execute(base_sql, tuple(params)).fetchall()
     conn.close()

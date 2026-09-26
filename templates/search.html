@@ -11,7 +11,7 @@
         <div class="col-lg-6 position-relative">
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
-            <input type="text" id="search-query-input" name="q" class="form-control" placeholder="Search medicine name, generic, brand, strength..." value="{{ query }}" autocomplete="off" required>
+            <input type="text" id="search-query-input" name="q" class="form-control" placeholder="Search medicine, category, brand, or generic formula..." value="{{ query }}" autocomplete="off" required>
           </div>
           <div id="search-suggestions" class="search-suggestions-box"></div>
         </div>
@@ -19,7 +19,7 @@
         <div class="col-lg-4">
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-geo-alt text-muted"></i></span>
-            <input type="text" name="city" class="form-control" placeholder="City (e.g. Vizianagaram, Visakhapatnam, Guntur)" value="{{ user_city or '' }}">
+            <input type="text" name="city" class="form-control" placeholder="City or Area (e.g. Guntur, Hyderabad, Kukatpally...)" value="{{ user_city or '' }}">
           </div>
         </div>
 
@@ -37,9 +37,9 @@
         </button>
         <div id="location-status-text" class="text-muted">
           {% if user_city %}
-            <span><i class="bi bi-geo-alt-fill text-success me-1"></i>Filtered by city: <strong>{{ user_city }}</strong></span>
+            <span><i class="bi bi-geo-alt-fill text-success me-1"></i>City / Locality Filter: <strong>{{ user_city }}</strong></span>
           {% elif user_lat and user_lng %}
-            <span class="text-success"><i class="bi bi-geo-alt-fill me-1"></i>Using coordinates ({{ user_lat|round(4) }}, {{ user_lng|round(4) }})</span>
+            <span class="text-success"><i class="bi bi-geo-alt-fill me-1"></i>GPS Active ({{ user_lat|round(4) }}, {{ user_lng|round(4) }})</span>
           {% else %}
             <span><i class="bi bi-info-circle me-1"></i>Enter a city above to filter pharmacies by city</span>
           {% endif %}
@@ -49,34 +49,30 @@
   </div>
 
   {% if has_searched %}
-    <!-- Case 1: No registered pharmacies in the specified city -->
+    <!-- Case 1: No participating pharmacies in the entered city -->
     {% if no_pharmacies_in_city %}
       <div class="card card-custom p-5 text-center my-4 border-warning shadow-sm">
         <div class="stat-icon yellow mx-auto mb-3" style="width: 64px; height: 64px; font-size: 2rem;">
           <i class="bi bi-geo-alt-fill"></i>
         </div>
         <h3 class="fw-bold text-dark mb-2">No Participating Pharmacies Found</h3>
-        <p class="text-muted fs-5 mb-4" style="max-width: 620px; margin: 0 auto;">
+        <p class="text-muted fs-5 mb-4" style="max-width: 640px; margin: 0 auto;">
           There are currently no pharmacies registered with Medicine Availability Finder in <strong>{{ user_city }}</strong>. Try searching another city or check back later.
         </p>
         <div class="p-3 bg-light rounded d-inline-block mx-auto border">
-          <span class="text-muted small fw-semibold d-block mb-2">Search registered demo cities:</span>
-          <a href="{{ url_for('medicine.search', q=query, city='Vizianagaram') }}" class="btn btn-sm btn-outline-success me-2 mb-1">
-            <i class="bi bi-search me-1"></i>Vizianagaram
-          </a>
-          <a href="{{ url_for('medicine.search', q=query, city='Visakhapatnam') }}" class="btn btn-sm btn-outline-success me-2 mb-1">
-            <i class="bi bi-search me-1"></i>Visakhapatnam
-          </a>
-          <a href="{{ url_for('medicine.search', q=query, city='Guntur') }}" class="btn btn-sm btn-outline-success me-2 mb-1">
-            <i class="bi bi-search me-1"></i>Guntur
-          </a>
-          <a href="{{ url_for('medicine.search', q=query) }}" class="btn btn-sm btn-outline-secondary mb-1">
-            <i class="bi bi-globe me-1"></i>All Cities
-          </a>
+          <span class="text-muted small fw-semibold d-block mb-2">Search registered demo cities & localities:</span>
+          <a href="{{ url_for('medicine.search', q=query, city='Guntur') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Guntur</a>
+          <a href="{{ url_for('medicine.search', q=query, city='Vijayawada') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Vijayawada</a>
+          <a href="{{ url_for('medicine.search', q=query, city='Vizianagaram') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Vizianagaram</a>
+          <a href="{{ url_for('medicine.search', q=query, city='Visakhapatnam') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Visakhapatnam</a>
+          <a href="{{ url_for('medicine.search', q=query, city='Tirupati') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Tirupati</a>
+          <a href="{{ url_for('medicine.search', q=query, city='Hyderabad') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Hyderabad</a>
+          <a href="{{ url_for('medicine.search', q=query, city='Kukatpally') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Kukatpally</a>
+          <a href="{{ url_for('medicine.search', q=query, city='Gachibowli') }}" class="btn btn-sm btn-outline-success me-1 mb-1">Gachibowli</a>
         </div>
       </div>
 
-    <!-- Case 2: Pharmacies exist in that city and matching stock was found -->
+    <!-- Case 2: Matching pharmacies found in that city -->
     {% elif results|length > 0 %}
       <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
@@ -115,7 +111,7 @@
                         </a>
                       </h5>
                       {% if item.is_demo %}
-                        <span class="demo-badge me-2">Demo Pharmacy — College Project</span>
+                        <span class="demo-badge me-2">Demo Data — College Project</span>
                       {% endif %}
                     </div>
 
@@ -149,12 +145,21 @@
                 <!-- Medicine & Stock Info Column -->
                 <div class="col-lg-4 col-md-3 mb-3 mb-md-0 border-start-md px-lg-3">
                   <div class="fw-bold fs-5 text-success">{{ item.medicine_name }}</div>
-                  <div class="small text-muted">{{ item.strength }} &bull; {{ item.form }}</div>
+                  <div class="small text-muted">
+                    <span class="badge bg-light text-dark border">{{ item.strength }}</span>
+                    <span class="badge bg-light text-dark border">{{ item.form }}</span>
+                    {% if item.medicine_category %}
+                      <span class="badge bg-info-subtle text-info border">{{ item.medicine_category }}</span>
+                    {% endif %}
+                  </div>
                   {% if item.brand_name %}
-                    <div class="small text-muted">Brand: <strong>{{ item.brand_name }}</strong></div>
+                    <div class="small text-muted mt-1">Brand: <strong>{{ item.brand_name }}</strong></div>
+                  {% endif %}
+                  {% if item.manufacturer %}
+                    <div class="small text-muted">Mfg: {{ item.manufacturer }}</div>
                   {% endif %}
                   {% if item.prescription_required %}
-                    <span class="badge bg-danger mt-1"><i class="bi bi-file-medical me-1"></i>Prescription Required</span>
+                    <span class="badge bg-danger mt-1"><i class="bi bi-file-medical me-1"></i>Prescription Required (Rx)</span>
                   {% endif %}
 
                   <div class="mt-2">
@@ -195,7 +200,7 @@
         {% endfor %}
       </div>
 
-    <!-- Case 3: Pharmacies exist in city, but none currently stock the searched medicine -->
+    <!-- Case 3: Pharmacies exist in that city, but none currently stock the medicine -->
     {% else %}
       <div class="card card-custom p-5 text-center my-4 shadow-sm">
         <i class="bi bi-capsule text-muted mb-3" style="font-size: 3.5rem;"></i>
@@ -206,17 +211,95 @@
         <div class="mt-4">
           <a href="{{ url_for('medicine.search', q='Paracetamol', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Paracetamol</a>
           <a href="{{ url_for('medicine.search', q='Cetirizine', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Cetirizine</a>
+          <a href="{{ url_for('medicine.search', q='Vitamin C', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Vitamin C</a>
           <a href="{{ url_for('medicine.search', q='ORS', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search ORS</a>
         </div>
       </div>
     {% endif %}
 
   {% else %}
-    <!-- Initial empty search landing -->
-    <div class="card card-custom p-5 text-center shadow-sm">
-      <i class="bi bi-search text-success mb-3" style="font-size: 3rem;"></i>
-      <h3 class="fw-bold">Search for any medicine above</h3>
-      <p class="text-muted">Enter a medicine name, brand, or generic formula and optional city to check availability.</p>
+    <!-- Initial empty search landing with Popular Cities and Medicine Categories -->
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="card card-custom p-4 shadow-sm">
+          <h5 class="fw-bold mb-3"><i class="bi bi-capsule me-2 text-success"></i>Browse Medicine Categories</h5>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-thermometer-half text-danger me-1"></i>Pain & Fever</h6>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Paracetamol') }}" class="btn btn-sm btn-outline-secondary">Paracetamol</a>
+                  <a href="{{ url_for('medicine.search', q='Ibuprofen') }}" class="btn btn-sm btn-outline-secondary">Ibuprofen</a>
+                  <a href="{{ url_for('medicine.search', q='Diclofenac') }}" class="btn btn-sm btn-outline-secondary">Diclofenac</a>
+                  <a href="{{ url_for('medicine.search', q='Aceclofenac') }}" class="btn btn-sm btn-outline-secondary">Aceclofenac</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-shield-plus text-primary me-1"></i>Cold & Allergy</h6>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Cetirizine') }}" class="btn btn-sm btn-outline-secondary">Cetirizine</a>
+                  <a href="{{ url_for('medicine.search', q='Levocetirizine') }}" class="btn btn-sm btn-outline-secondary">Levocetirizine</a>
+                  <a href="{{ url_for('medicine.search', q='Fexofenadine') }}" class="btn btn-sm btn-outline-secondary">Fexofenadine</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-heart-pulse text-warning me-1"></i>Acidity & Digestion</h6>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Pantoprazole') }}" class="btn btn-sm btn-outline-secondary">Pantoprazole</a>
+                  <a href="{{ url_for('medicine.search', q='Omeprazole') }}" class="btn btn-sm btn-outline-secondary">Omeprazole</a>
+                  <a href="{{ url_for('medicine.search', q='ORS') }}" class="btn btn-sm btn-outline-secondary">ORS Electral</a>
+                  <a href="{{ url_for('medicine.search', q='Antacid') }}" class="btn btn-sm btn-outline-secondary">Antacid Gel</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-droplet-fill text-success me-1"></i>Vitamins & Immunity</h6>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Vitamin C') }}" class="btn btn-sm btn-outline-secondary">Vitamin C</a>
+                  <a href="{{ url_for('medicine.search', q='Vitamin D3') }}" class="btn btn-sm btn-outline-secondary">Vitamin D3</a>
+                  <a href="{{ url_for('medicine.search', q='Calcium') }}" class="btn btn-sm btn-outline-secondary">Calcium</a>
+                  <a href="{{ url_for('medicine.search', q='Iron') }}" class="btn btn-sm btn-outline-secondary">Iron Folate</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card card-custom p-4 shadow-sm h-100">
+          <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill me-2 text-danger"></i>Explore Cities & Areas</h5>
+          <p class="small text-muted mb-2">Search availability across major cities and localities:</p>
+          <div class="d-flex flex-wrap gap-1">
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Guntur') }}" class="btn btn-sm btn-outline-success">Guntur</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Vijayawada') }}" class="btn btn-sm btn-outline-success">Vijayawada</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Vizianagaram') }}" class="btn btn-sm btn-outline-success">Vizianagaram</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Visakhapatnam') }}" class="btn btn-sm btn-outline-success">Visakhapatnam</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Tirupati') }}" class="btn btn-sm btn-outline-success">Tirupati</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kurnool') }}" class="btn btn-sm btn-outline-success">Kurnool</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Nellore') }}" class="btn btn-sm btn-outline-success">Nellore</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Rajahmundry') }}" class="btn btn-sm btn-outline-success">Rajahmundry</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kakinada') }}" class="btn btn-sm btn-outline-success">Kakinada</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kadapa') }}" class="btn btn-sm btn-outline-success">Kadapa</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Anantapur') }}" class="btn btn-sm btn-outline-success">Anantapur</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Hyderabad') }}" class="btn btn-sm btn-outline-primary">Hyderabad</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kukatpally') }}" class="btn btn-sm btn-outline-primary">Kukatpally</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Gachibowli') }}" class="btn btn-sm btn-outline-primary">Gachibowli</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Madhapur') }}" class="btn btn-sm btn-outline-primary">Madhapur</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Banjara Hills') }}" class="btn btn-sm btn-outline-primary">Banjara Hills</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Secunderabad') }}" class="btn btn-sm btn-outline-primary">Secunderabad</a>
+            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Miyapur') }}" class="btn btn-sm btn-outline-primary">Miyapur</a>
+          </div>
+        </div>
+      </div>
     </div>
   {% endif %}
 </div>
