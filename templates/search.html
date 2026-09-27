@@ -4,6 +4,22 @@
 
 {% block content %}
 <div class="container py-4">
+
+  <!-- Universal Safety & Medical Disclaimer Banner -->
+  <div class="alert alert-warning border-warning shadow-sm py-3 px-4 mb-4" role="alert">
+    <div class="d-flex align-items-start">
+      <i class="bi bi-shield-exclamation text-warning-emphasis fs-4 me-3 flex-shrink-0 mt-1"></i>
+      <div>
+        <h6 class="alert-heading fw-bold mb-1 text-dark">
+          <i class="bi bi-prescription2 text-danger me-1"></i>Important Medical & Prescription Notice
+        </h6>
+        <p class="mb-0 text-dark small" style="line-height: 1.5;">
+          <strong>Medicine Availability Finder provides availability information only.</strong> Prescription medicines should be used only under the guidance of a qualified healthcare professional. Do not start, stop, or change medication without medical advice. This platform does not provide medical diagnoses or dosage recommendations.
+        </p>
+      </div>
+    </div>
+  </div>
+
   <!-- Search Bar Header -->
   <div class="card card-custom p-3 mb-4 shadow-sm">
     <form id="medicine-search-form" action="{{ url_for('medicine.search') }}" method="GET">
@@ -11,7 +27,7 @@
         <div class="col-lg-6 position-relative">
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
-            <input type="text" id="search-query-input" name="q" class="form-control" placeholder="Search medicine, category, brand, or generic formula..." value="{{ query }}" autocomplete="off" required>
+            <input type="text" id="search-query-input" name="q" class="form-control" placeholder="Search medicine, category (BP, Diabetes, Heart...), brand, or generic..." value="{{ query }}" autocomplete="off" required>
           </div>
           <div id="search-suggestions" class="search-suggestions-box"></div>
         </div>
@@ -19,7 +35,7 @@
         <div class="col-lg-4">
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-geo-alt text-muted"></i></span>
-            <input type="text" name="city" class="form-control" placeholder="City or Area (e.g. Guntur, Hyderabad, Kukatpally...)" value="{{ user_city or '' }}">
+            <input type="text" name="city" class="form-control" placeholder="City or Area (e.g. Guntur, Hyderabad, Kukatpally, Vizag...)" value="{{ user_city or '' }}">
           </div>
         </div>
 
@@ -94,6 +110,7 @@
           <i class="bi bi-clock-history text-success me-1"></i>
           <span><strong>Inventory Freshness:</strong> Availability is based on the latest inventory information provided by registered pharmacies.</span>
         </div>
+        <span class="badge bg-secondary-subtle text-secondary border">Demo Inventory</span>
       </div>
 
       <div class="row g-3">
@@ -145,21 +162,27 @@
                 <!-- Medicine & Stock Info Column -->
                 <div class="col-lg-4 col-md-3 mb-3 mb-md-0 border-start-md px-lg-3">
                   <div class="fw-bold fs-5 text-success">{{ item.medicine_name }}</div>
-                  <div class="small text-muted">
+                  <div class="small text-muted mb-1">
                     <span class="badge bg-light text-dark border">{{ item.strength }}</span>
                     <span class="badge bg-light text-dark border">{{ item.form }}</span>
                     {% if item.medicine_category %}
                       <span class="badge bg-info-subtle text-info border">{{ item.medicine_category }}</span>
                     {% endif %}
                   </div>
-                  {% if item.brand_name %}
-                    <div class="small text-muted mt-1">Brand: <strong>{{ item.brand_name }}</strong></div>
+                  {% if item.generic_name %}
+                    <div class="small text-muted"><strong>Generic:</strong> {{ item.generic_name }}</div>
                   {% endif %}
                   {% if item.manufacturer %}
-                    <div class="small text-muted">Mfg: {{ item.manufacturer }}</div>
+                    <div class="small text-muted"><strong>Mfg:</strong> {{ item.manufacturer }}</div>
                   {% endif %}
                   {% if item.prescription_required %}
-                    <span class="badge bg-danger mt-1"><i class="bi bi-file-medical me-1"></i>Prescription Required (Rx)</span>
+                    <div class="mt-1">
+                      <span class="badge bg-danger"><i class="bi bi-file-medical me-1"></i>Prescription Required (Rx)</span>
+                    </div>
+                  {% else %}
+                    <div class="mt-1">
+                      <span class="badge bg-success-subtle text-success border">Over-The-Counter (OTC)</span>
+                    </div>
                   {% endif %}
 
                   <div class="mt-2">
@@ -209,10 +232,10 @@
           We couldn't find any pharmacy in {{ user_city if user_city else 'the database' }} listing <strong>"{{ query }}"</strong>. Try searching for an alternative generic name or search in another city.
         </p>
         <div class="mt-4">
+          <a href="{{ url_for('medicine.search', q='Metformin', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Metformin</a>
+          <a href="{{ url_for('medicine.search', q='Amlodipine', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Amlodipine</a>
           <a href="{{ url_for('medicine.search', q='Paracetamol', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Paracetamol</a>
-          <a href="{{ url_for('medicine.search', q='Cetirizine', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Cetirizine</a>
-          <a href="{{ url_for('medicine.search', q='Vitamin C', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Vitamin C</a>
-          <a href="{{ url_for('medicine.search', q='ORS', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search ORS</a>
+          <a href="{{ url_for('medicine.search', q='Atorvastatin', city=user_city) }}" class="btn btn-outline-success me-2 mb-2">Search Atorvastatin</a>
         </div>
       </div>
     {% endif %}
@@ -222,51 +245,92 @@
     <div class="row g-4">
       <div class="col-lg-8">
         <div class="card card-custom p-4 shadow-sm">
-          <h5 class="fw-bold mb-3"><i class="bi bi-capsule me-2 text-success"></i>Browse Medicine Categories</h5>
+          <h5 class="fw-bold mb-3"><i class="bi bi-capsule me-2 text-success"></i>Browse Chronic & Everyday Medicine Categories</h5>
           <div class="row g-3">
+            <!-- Blood Pressure -->
             <div class="col-md-6">
               <div class="p-3 bg-light rounded border h-100">
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-thermometer-half text-danger me-1"></i>Pain & Fever</h6>
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-heart-pulse-fill text-danger me-1"></i>Blood Pressure / Hypertension</h6>
+                <div class="small text-muted mb-2"><span class="badge bg-danger-subtle text-danger">Prescription Required</span></div>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Amlodipine') }}" class="btn btn-sm btn-outline-secondary">Amlodipine</a>
+                  <a href="{{ url_for('medicine.search', q='Telmisartan') }}" class="btn btn-sm btn-outline-secondary">Telmisartan</a>
+                  <a href="{{ url_for('medicine.search', q='Losartan') }}" class="btn btn-sm btn-outline-secondary">Losartan</a>
+                  <a href="{{ url_for('medicine.search', q='Metoprolol') }}" class="btn btn-sm btn-outline-secondary">Metoprolol</a>
+                  <a href="{{ url_for('medicine.search', q='Ramipril') }}" class="btn btn-sm btn-outline-secondary">Ramipril</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Diabetes -->
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-droplet-half text-primary me-1"></i>Diabetes / Blood Sugar</h6>
+                <div class="small text-muted mb-2"><span class="badge bg-danger-subtle text-danger">Prescription Required</span></div>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Metformin') }}" class="btn btn-sm btn-outline-secondary">Metformin</a>
+                  <a href="{{ url_for('medicine.search', q='Glimepiride') }}" class="btn btn-sm btn-outline-secondary">Glimepiride</a>
+                  <a href="{{ url_for('medicine.search', q='Dapagliflozin') }}" class="btn btn-sm btn-outline-secondary">Dapagliflozin</a>
+                  <a href="{{ url_for('medicine.search', q='Sitagliptin') }}" class="btn btn-sm btn-outline-secondary">Sitagliptin</a>
+                  <a href="{{ url_for('medicine.search', q='Insulin') }}" class="btn btn-sm btn-outline-secondary">Insulin</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Heart & Cardiovascular -->
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-activity text-danger me-1"></i>Heart & Cardiovascular</h6>
+                <div class="small text-muted mb-2"><span class="badge bg-danger-subtle text-danger">Prescription Required</span></div>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Aspirin') }}" class="btn btn-sm btn-outline-secondary">Aspirin</a>
+                  <a href="{{ url_for('medicine.search', q='Clopidogrel') }}" class="btn btn-sm btn-outline-secondary">Clopidogrel</a>
+                  <a href="{{ url_for('medicine.search', q='Furosemide') }}" class="btn btn-sm btn-outline-secondary">Furosemide</a>
+                  <a href="{{ url_for('medicine.search', q='Nitroglycerin') }}" class="btn btn-sm btn-outline-secondary">Nitroglycerin</a>
+                  <a href="{{ url_for('medicine.search', q='Spironolactone') }}" class="btn btn-sm btn-outline-secondary">Spironolactone</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cholesterol -->
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-pie-chart text-warning me-1"></i>Cholesterol & Lipids</h6>
+                <div class="small text-muted mb-2"><span class="badge bg-danger-subtle text-danger">Prescription Required</span></div>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Atorvastatin') }}" class="btn btn-sm btn-outline-secondary">Atorvastatin</a>
+                  <a href="{{ url_for('medicine.search', q='Rosuvastatin') }}" class="btn btn-sm btn-outline-secondary">Rosuvastatin</a>
+                  <a href="{{ url_for('medicine.search', q='Simvastatin') }}" class="btn btn-sm btn-outline-secondary">Simvastatin</a>
+                  <a href="{{ url_for('medicine.search', q='Fenofibrate') }}" class="btn btn-sm btn-outline-secondary">Fenofibrate</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Thyroid & Respiratory -->
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-wind text-info me-1"></i>Asthma & Thyroid Care</h6>
+                <div class="small text-muted mb-2"><span class="badge bg-danger-subtle text-danger">Prescription Required</span></div>
+                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Levothyroxine') }}" class="btn btn-sm btn-outline-secondary">Levothyroxine</a>
+                  <a href="{{ url_for('medicine.search', q='Salbutamol') }}" class="btn btn-sm btn-outline-secondary">Salbutamol Inhaler</a>
+                  <a href="{{ url_for('medicine.search', q='Budesonide') }}" class="btn btn-sm btn-outline-secondary">Budesonide</a>
+                  <a href="{{ url_for('medicine.search', q='Montelukast') }}" class="btn btn-sm btn-outline-secondary">Montelukast</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pain, Fever & Digestion -->
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border h-100">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-bandaid text-success me-1"></i>Pain, Digestion & OTC</h6>
+                <div class="small text-muted mb-2"><span class="badge bg-success-subtle text-success">OTC & General</span></div>
                 <div class="d-flex flex-wrap gap-1">
                   <a href="{{ url_for('medicine.search', q='Paracetamol') }}" class="btn btn-sm btn-outline-secondary">Paracetamol</a>
-                  <a href="{{ url_for('medicine.search', q='Ibuprofen') }}" class="btn btn-sm btn-outline-secondary">Ibuprofen</a>
-                  <a href="{{ url_for('medicine.search', q='Diclofenac') }}" class="btn btn-sm btn-outline-secondary">Diclofenac</a>
-                  <a href="{{ url_for('medicine.search', q='Aceclofenac') }}" class="btn btn-sm btn-outline-secondary">Aceclofenac</a>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="p-3 bg-light rounded border h-100">
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-shield-plus text-primary me-1"></i>Cold & Allergy</h6>
-                <div class="d-flex flex-wrap gap-1">
-                  <a href="{{ url_for('medicine.search', q='Cetirizine') }}" class="btn btn-sm btn-outline-secondary">Cetirizine</a>
-                  <a href="{{ url_for('medicine.search', q='Levocetirizine') }}" class="btn btn-sm btn-outline-secondary">Levocetirizine</a>
-                  <a href="{{ url_for('medicine.search', q='Fexofenadine') }}" class="btn btn-sm btn-outline-secondary">Fexofenadine</a>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="p-3 bg-light rounded border h-100">
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-heart-pulse text-warning me-1"></i>Acidity & Digestion</h6>
-                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Dolo 650') }}" class="btn btn-sm btn-outline-secondary">Dolo 650</a>
                   <a href="{{ url_for('medicine.search', q='Pantoprazole') }}" class="btn btn-sm btn-outline-secondary">Pantoprazole</a>
-                  <a href="{{ url_for('medicine.search', q='Omeprazole') }}" class="btn btn-sm btn-outline-secondary">Omeprazole</a>
-                  <a href="{{ url_for('medicine.search', q='ORS') }}" class="btn btn-sm btn-outline-secondary">ORS Electral</a>
-                  <a href="{{ url_for('medicine.search', q='Antacid') }}" class="btn btn-sm btn-outline-secondary">Antacid Gel</a>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="p-3 bg-light rounded border h-100">
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-droplet-fill text-success me-1"></i>Vitamins & Immunity</h6>
-                <div class="d-flex flex-wrap gap-1">
+                  <a href="{{ url_for('medicine.search', q='Cetirizine') }}" class="btn btn-sm btn-outline-secondary">Cetirizine</a>
                   <a href="{{ url_for('medicine.search', q='Vitamin C') }}" class="btn btn-sm btn-outline-secondary">Vitamin C</a>
-                  <a href="{{ url_for('medicine.search', q='Vitamin D3') }}" class="btn btn-sm btn-outline-secondary">Vitamin D3</a>
-                  <a href="{{ url_for('medicine.search', q='Calcium') }}" class="btn btn-sm btn-outline-secondary">Calcium</a>
-                  <a href="{{ url_for('medicine.search', q='Iron') }}" class="btn btn-sm btn-outline-secondary">Iron Folate</a>
                 </div>
               </div>
             </div>
@@ -279,24 +343,24 @@
           <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill me-2 text-danger"></i>Explore Cities & Areas</h5>
           <p class="small text-muted mb-2">Search availability across major cities and localities:</p>
           <div class="d-flex flex-wrap gap-1">
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Guntur') }}" class="btn btn-sm btn-outline-success">Guntur</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Vijayawada') }}" class="btn btn-sm btn-outline-success">Vijayawada</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Vizianagaram') }}" class="btn btn-sm btn-outline-success">Vizianagaram</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Visakhapatnam') }}" class="btn btn-sm btn-outline-success">Visakhapatnam</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Tirupati') }}" class="btn btn-sm btn-outline-success">Tirupati</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kurnool') }}" class="btn btn-sm btn-outline-success">Kurnool</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Nellore') }}" class="btn btn-sm btn-outline-success">Nellore</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Rajahmundry') }}" class="btn btn-sm btn-outline-success">Rajahmundry</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kakinada') }}" class="btn btn-sm btn-outline-success">Kakinada</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kadapa') }}" class="btn btn-sm btn-outline-success">Kadapa</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Anantapur') }}" class="btn btn-sm btn-outline-success">Anantapur</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Hyderabad') }}" class="btn btn-sm btn-outline-primary">Hyderabad</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kukatpally') }}" class="btn btn-sm btn-outline-primary">Kukatpally</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Gachibowli') }}" class="btn btn-sm btn-outline-primary">Gachibowli</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Madhapur') }}" class="btn btn-sm btn-outline-primary">Madhapur</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Banjara Hills') }}" class="btn btn-sm btn-outline-primary">Banjara Hills</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Secunderabad') }}" class="btn btn-sm btn-outline-primary">Secunderabad</a>
-            <a href="{{ url_for('medicine.search', q='Paracetamol', city='Miyapur') }}" class="btn btn-sm btn-outline-primary">Miyapur</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Guntur') }}" class="btn btn-sm btn-outline-success">Guntur</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Vijayawada') }}" class="btn btn-sm btn-outline-success">Vijayawada</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Vizianagaram') }}" class="btn btn-sm btn-outline-success">Vizianagaram</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Visakhapatnam') }}" class="btn btn-sm btn-outline-success">Visakhapatnam</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Tirupati') }}" class="btn btn-sm btn-outline-success">Tirupati</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Kurnool') }}" class="btn btn-sm btn-outline-success">Kurnool</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Nellore') }}" class="btn btn-sm btn-outline-success">Nellore</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Rajahmundry') }}" class="btn btn-sm btn-outline-success">Rajahmundry</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Kakinada') }}" class="btn btn-sm btn-outline-success">Kakinada</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Kadapa') }}" class="btn btn-sm btn-outline-success">Kadapa</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Anantapur') }}" class="btn btn-sm btn-outline-success">Anantapur</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Hyderabad') }}" class="btn btn-sm btn-outline-primary">Hyderabad</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Kukatpally') }}" class="btn btn-sm btn-outline-primary">Kukatpally</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Gachibowli') }}" class="btn btn-sm btn-outline-primary">Gachibowli</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Madhapur') }}" class="btn btn-sm btn-outline-primary">Madhapur</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Banjara Hills') }}" class="btn btn-sm btn-outline-primary">Banjara Hills</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Secunderabad') }}" class="btn btn-sm btn-outline-primary">Secunderabad</a>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Miyapur') }}" class="btn btn-sm btn-outline-primary">Miyapur</a>
           </div>
         </div>
       </div>

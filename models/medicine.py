@@ -12,29 +12,31 @@ def get_all_medicines():
     conn.close()
     return [dict(r) for r in rows]
 
-def search_medicines(query, limit=50):
+def search_medicines(query, limit=60):
     conn = get_db_connection()
     term = f"%{query.strip()}%"
     rows = conn.execute("""
     SELECT * FROM medicines
-    WHERE name LIKE ? OR generic_name LIKE ? OR brand_name LIKE ? OR strength LIKE ? OR form LIKE ?
+    WHERE name LIKE ? OR generic_name LIKE ? OR brand_name LIKE ? OR category LIKE ? OR manufacturer LIKE ? OR strength LIKE ? OR form LIKE ?
     ORDER BY name ASC
     LIMIT ?
-    """, (term, term, term, term, term, limit)).fetchall()
+    """, (term, term, term, term, term, term, term, limit)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
-def create_medicine(name, generic_name, brand_name, strength, form, description, prescription_required=0):
+def create_medicine(name, category='General', generic_name=None, brand_name=None, manufacturer=None, strength=None, form='Tablet', description=None, prescription_required=0):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("""
-        INSERT INTO medicines (name, generic_name, brand_name, strength, form, description, prescription_required)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO medicines (name, category, generic_name, brand_name, manufacturer, strength, form, description, prescription_required)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             name.strip(),
+            category.strip() if category else 'General',
             generic_name.strip() if generic_name else None,
             brand_name.strip() if brand_name else None,
+            manufacturer.strip() if manufacturer else None,
             strength.strip() if strength else None,
             form.strip() if form else 'Tablet',
             description.strip() if description else None,
@@ -49,17 +51,19 @@ def create_medicine(name, generic_name, brand_name, strength, form, description,
     finally:
         conn.close()
 
-def update_medicine(medicine_id, name, generic_name, brand_name, strength, form, description, prescription_required=0):
+def update_medicine(medicine_id, name, category='General', generic_name=None, brand_name=None, manufacturer=None, strength=None, form='Tablet', description=None, prescription_required=0):
     conn = get_db_connection()
     try:
         conn.execute("""
         UPDATE medicines
-        SET name = ?, generic_name = ?, brand_name = ?, strength = ?, form = ?, description = ?, prescription_required = ?
+        SET name = ?, category = ?, generic_name = ?, brand_name = ?, manufacturer = ?, strength = ?, form = ?, description = ?, prescription_required = ?
         WHERE id = ?
         """, (
             name.strip(),
+            category.strip() if category else 'General',
             generic_name.strip() if generic_name else None,
             brand_name.strip() if brand_name else None,
+            manufacturer.strip() if manufacturer else None,
             strength.strip() if strength else None,
             form.strip() if form else 'Tablet',
             description.strip() if description else None,

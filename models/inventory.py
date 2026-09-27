@@ -145,7 +145,9 @@ def add_inventory_item(pharmacy_id, medicine_id, price, quantity, expiry_date=No
             last_updated = excluded.last_updated
         """, (pharmacy_id, medicine_id, float(price), int(quantity), expiry_date, now_iso))
         conn.commit()
-        inv_id = cursor.lastrowid
+        
+        row = cursor.execute("SELECT id FROM inventory WHERE pharmacy_id = ? AND medicine_id = ?", (pharmacy_id, medicine_id)).fetchone()
+        inv_id = row['id'] if row else cursor.lastrowid
         return inv_id, None
     except Exception as e:
         conn.rollback()

@@ -1,143 +1,162 @@
 {% extends 'base.html' %}
 
-{% block title %}Find Medicine Availability in Nearby Pharmacies{% endblock %}
+{% block title %}Find Medicines Nearby - Real-Time Pharmacy Stock{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
-<section class="hero-section text-center">
-  <div class="container">
-    <div class="d-inline-flex align-items-center bg-white border border-success-subtle rounded-pill px-3 py-1 mb-3 shadow-sm">
-      <span class="badge bg-success rounded-pill me-2">Verified System</span>
-      <span class="small text-muted fw-semibold">Live Database Search Across Andhra Pradesh & Hyderabad</span>
-    </div>
-
-    <h1 class="hero-title">Find Medicine Availability in Nearby Pharmacies</h1>
-    <p class="hero-subtitle">
-      Search medicines in real-time, view verified pharmacy stock, check prices, calculate exact distances, and get instant directions.
+<div class="hero-section">
+  <div class="container text-center">
+    <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill mb-3 fw-semibold">
+      <i class="bi bi-check-circle-fill me-1"></i>Real-Time Pharmacy Inventory Finder
+    </span>
+    <h1 class="display-4 fw-bold mb-3 text-dark">Find Needed Medicines in Nearby Pharmacies</h1>
+    <p class="lead text-muted mb-4 mx-auto" style="max-width: 700px;">
+      Search chronic care, prescription, and emergency medicines across registered pharmacies in <strong>Andhra Pradesh</strong> and <strong>Hyderabad</strong>. Check availability, live stock, and prices before visiting.
     </p>
 
-    <!-- Hero Search Bar -->
-    <div class="search-card-hero text-start">
-      <form id="medicine-search-form" action="{{ url_for('medicine.search') }}" method="GET">
-        <div class="row g-2 align-items-center">
-          <div class="col-lg-7 position-relative">
-            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-capsule me-1"></i>Search Medicine</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light"><i class="bi bi-search text-success"></i></span>
-              <input type="text" id="search-query-input" name="q" class="form-control form-control-lg" placeholder="e.g. Paracetamol, Cetirizine, Vitamin C, ORS, Pan 40..." autocomplete="off" required>
-            </div>
-            <!-- Live Suggestions Dropdown -->
-            <div id="search-suggestions" class="search-suggestions-box"></div>
-          </div>
+    <!-- Main Search Card -->
+    <div class="row justify-content-center">
+      <div class="col-lg-9">
+        <div class="card card-custom p-4 search-hero-card shadow text-start">
+          <form id="hero-search-form" action="{{ url_for('medicine.search') }}" method="GET">
+            <div class="row g-2">
+              <div class="col-md-7 position-relative">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-capsule me-1 text-success"></i>Medicine Name, Category, or Generic</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
+                  <input type="text" id="hero-query-input" name="q" class="form-control form-control-lg fs-6" placeholder="e.g. Metformin, Amlodipine, Telmisartan, Dolo 650, Atorvastatin..." autocomplete="off" required>
+                </div>
+                <div id="hero-search-suggestions" class="search-suggestions-box"></div>
+              </div>
 
-          <div class="col-lg-5">
-            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-geo-alt me-1"></i>City or Locality</label>
-            <div class="input-group">
-              <input type="text" name="city" class="form-control form-control-lg" placeholder="e.g. Guntur, Hyderabad, Vizag, Vijayawada..." value="{{ current_user_city or '' }}">
-              <button type="submit" class="btn btn-primary btn-lg px-4">Search</button>
+              <div class="col-md-5">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-geo-alt me-1 text-danger"></i>City or Locality</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="bi bi-geo text-muted"></i></span>
+                  <input type="text" name="city" class="form-control form-control-lg fs-6" placeholder="e.g. Guntur, Hyderabad, Kukatpally, Vizag...">
+                </div>
+              </div>
+
+              <input type="hidden" id="hero-lat" name="lat">
+              <input type="hidden" id="hero-lng" name="lng">
+
+              <div class="col-12 mt-3 d-flex flex-wrap align-items-center justify-content-between">
+                <button type="button" id="hero-gps-btn" class="btn btn-gps btn-sm">
+                  <i class="bi bi-crosshair me-1"></i>Use Current GPS Location
+                </button>
+                <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+                  <i class="bi bi-search me-2"></i>Search Availability
+                </button>
+              </div>
             </div>
+          </form>
+
+          <!-- Popular Medicine Quick Searches -->
+          <div class="mt-3 pt-3 border-top">
+            <span class="small text-muted me-2 fw-semibold">Popular Searches:</span>
+            <a href="{{ url_for('medicine.search', q='Metformin', city='Guntur') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1 p-2">Metformin (Guntur)</a>
+            <a href="{{ url_for('medicine.search', q='Amlodipine', city='Hyderabad') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1 p-2">Amlodipine (Hyderabad)</a>
+            <a href="{{ url_for('medicine.search', q='Telmisartan', city='Vijayawada') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1 p-2">Telmisartan (Vijayawada)</a>
+            <a href="{{ url_for('medicine.search', q='Atorvastatin', city='Vizianagaram') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1 p-2">Atorvastatin (Vizianagaram)</a>
+            <a href="{{ url_for('medicine.search', q='Levothyroxine', city='Visakhapatnam') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1 p-2">Levothyroxine (Visakhapatnam)</a>
+            <a href="{{ url_for('medicine.search', q='Salbutamol', city='Tirupati') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1 p-2">Salbutamol (Tirupati)</a>
           </div>
         </div>
-
-        <!-- Lat / Lng hidden fields -->
-        <input type="hidden" id="search-lat" name="lat" value="{{ current_user_lat or '' }}">
-        <input type="hidden" id="search-lng" name="lng" value="{{ current_user_lng or '' }}">
-
-        <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 pt-2 border-top">
-          <button type="button" id="detect-gps-btn" class="btn btn-gps btn-sm">
-            <i class="bi bi-crosshair me-1"></i>Use My Current Location
-          </button>
-          <div id="location-status-text" class="small text-muted">
-            {% if current_user_lat and current_user_lng %}
-              <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle me-1"></i>Saved GPS: {{ current_user_lat|round(4) }}, {{ current_user_lng|round(4) }}</span>
-            {% elif current_user_city %}
-              <span class="badge bg-light text-dark border"><i class="bi bi-geo-alt me-1"></i>{{ current_user_city }}</span>
-            {% else %}
-              <span><i class="bi bi-info-circle me-1"></i>Allow GPS or enter city for location-accurate results</span>
-            {% endif %}
-          </div>
-        </div>
-      </form>
-    </div>
-
-    <!-- Quick Search Medicine Tags -->
-    <div class="mt-4">
-      <span class="small text-muted me-2">Popular searches:</span>
-      <a href="{{ url_for('medicine.search', q='Paracetamol') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Paracetamol 650mg</a>
-      <a href="{{ url_for('medicine.search', q='Cetirizine') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Cetirizine 10mg</a>
-      <a href="{{ url_for('medicine.search', q='Vitamin C') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Vitamin C (Limcee)</a>
-      <a href="{{ url_for('medicine.search', q='Pantoprazole') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Pantoprazole (Pan 40)</a>
-      <a href="{{ url_for('medicine.search', q='ORS') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">ORS Electral</a>
-      <a href="{{ url_for('medicine.search', q='Azithromycin') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Azithromycin 500mg</a>
-      <a href="{{ url_for('medicine.search', q='Ibuprofen') }}" class="btn btn-sm btn-outline-secondary rounded-pill me-1 mb-1">Ibuprofen 400mg</a>
-    </div>
-
-    <!-- Quick City Pills -->
-    <div class="mt-2">
-      <span class="small text-muted me-2">Explore cities:</span>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Guntur') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Guntur</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Vijayawada') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Vijayawada</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Vizianagaram') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Vizianagaram</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Visakhapatnam') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Visakhapatnam</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Tirupati') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Tirupati</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kurnool') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Kurnool</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Nellore') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Nellore</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Hyderabad') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Hyderabad</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Kukatpally') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Kukatpally</a>
-      <a href="{{ url_for('medicine.search', q='Paracetamol', city='Gachibowli') }}" class="badge bg-light text-dark border text-decoration-none me-1 mb-1">Gachibowli</a>
+      </div>
     </div>
   </div>
-</section>
+</div>
+
+<!-- Important Safety Banner -->
+<div class="container my-3">
+  <div class="alert alert-warning border-warning shadow-sm py-3 px-4 rounded-3" role="alert">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-shield-exclamation text-warning-emphasis fs-3 me-3 flex-shrink-0"></i>
+      <div>
+        <h6 class="alert-heading fw-bold mb-1 text-dark">Medical & Prescription Disclaimer</h6>
+        <p class="mb-0 text-dark small">
+          Medicine Availability Finder provides availability information only. Prescription medicines should be used only under the guidance of a qualified healthcare professional. Do not start, stop, or change medication without medical advice.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Features Section -->
-<section class="py-5 bg-white">
-  <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="fw-bold">How Medicine Availability Finder Works</h2>
-      <p class="text-muted">A realistic three-tier architecture ensuring genuine data integrity across cities</p>
+<div class="container py-4">
+  <div class="text-center mb-4">
+    <h3 class="fw-bold">How Medicine Availability Finder Works</h3>
+    <p class="text-muted">Connecting patients with genuine pharmacy inventories in three transparent steps</p>
+  </div>
+
+  <div class="row g-4 text-center">
+    <div class="col-md-4">
+      <div class="card card-custom p-4 h-100 shadow-sm">
+        <div class="stat-icon green mx-auto mb-3">
+          <i class="bi bi-search"></i>
+        </div>
+        <h5 class="fw-bold">1. Search Medicine & City</h5>
+        <p class="text-muted small">Enter the medicine or generic salt, along with your Andhra Pradesh city or Hyderabad locality.</p>
+      </div>
     </div>
 
-    <div class="row g-4">
-      <div class="col-md-4">
-        <div class="card card-custom h-100 p-4 text-center">
-          <div class="stat-icon green mx-auto mb-3">
-            <i class="bi bi-geo-alt-fill"></i>
-          </div>
-          <h4 class="fw-bold">1. Location-Aware</h4>
-          <p class="text-muted">Dynamic city & locality matching prevents cross-city leakage. Exact Haversine distance is calculated when GPS coordinates are available.</p>
+    <div class="col-md-4">
+      <div class="card card-custom p-4 h-100 shadow-sm">
+        <div class="stat-icon blue mx-auto mb-3">
+          <i class="bi bi-hospital"></i>
         </div>
+        <h5 class="fw-bold">2. View Verified Stock & Prices</h5>
+        <p class="text-muted small">See real stock counts, accurate unit prices, prescription requirements, and freshness timestamps.</p>
       </div>
+    </div>
 
-      <div class="col-md-4">
-        <div class="card card-custom h-100 p-4 text-center">
-          <div class="stat-icon blue mx-auto mb-3">
-            <i class="bi bi-database-check"></i>
-          </div>
-          <h4 class="fw-bold">2. Direct Inventory</h4>
-          <p class="text-muted">Pharmacies maintain their own live stock count, unit pricing, manufacturer data, and batch expiry. Changes reflect instantly.</p>
+    <div class="col-md-4">
+      <div class="card card-custom p-4 h-100 shadow-sm">
+        <div class="stat-icon yellow mx-auto mb-3">
+          <i class="bi bi-geo-alt"></i>
         </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="card card-custom h-100 p-4 text-center">
-          <div class="stat-icon yellow mx-auto mb-3">
-            <i class="bi bi-pin-map-fill"></i>
-          </div>
-          <h4 class="fw-bold">3. Directions & Details</h4>
-          <p class="text-muted">One-click map directions, verified phone contact, store operating hours, and clear prescription (Rx) badges.</p>
-        </div>
+        <h5 class="fw-bold">3. Get Distance & Directions</h5>
+        <p class="text-muted small">View precise Haversine distance, pharmacy operating hours, phone numbers, and instant Google Map navigation.</p>
       </div>
     </div>
   </div>
-</section>
+</div>
 
-<!-- Demo Labeling Note for College Evaluation -->
-<section class="py-4 bg-light border-top border-bottom">
-  <div class="container text-center">
-    <span class="demo-badge me-2">Demo Data — College Project</span>
-    <span class="small text-muted">All seed pharmacies across Andhra Pradesh and Hyderabad are clearly labelled demo accounts for academic evaluation.</span>
+<!-- Sample Medicines Catalog Showcase -->
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="fw-bold mb-0">Browse Chronic & Essential Medicines</h4>
+      <p class="text-muted small mb-0">Search availability for common medications</p>
+    </div>
+    <a href="{{ url_for('medicine.search', q='Paracetamol') }}" class="btn btn-outline-success btn-sm">View All Medicines</a>
   </div>
-</section>
+
+  <div class="row g-3">
+    {% for med in sample_medicines %}
+      <div class="col-sm-6 col-md-4 col-lg-3">
+        <div class="card card-custom p-3 h-100 shadow-sm">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="badge bg-light text-dark border">{{ med.strength }}</span>
+            {% if med.prescription_required %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Rx</span>
+            {% else %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle small">OTC</span>
+            {% endif %}
+          </div>
+          <h6 class="fw-bold mb-1 text-truncate" title="{{ med.name }}">{{ med.name }}</h6>
+          <div class="small text-muted text-truncate mb-1">{{ med.category or 'General' }}</div>
+          <div class="small text-muted text-truncate mb-3">{{ med.manufacturer or med.generic_name or 'Standard' }}</div>
+          <div class="mt-auto">
+            <a href="{{ url_for('medicine.search', q=med.name) }}" class="btn btn-sm btn-outline-primary w-100">
+              <i class="bi bi-search me-1"></i>Find In Pharmacies
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
