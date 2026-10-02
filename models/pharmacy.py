@@ -12,6 +12,77 @@ def get_pharmacy_by_user_id(user_id):
     conn.close()
     return dict(row) if row else None
 
+def search_locations(query, limit=10):
+    """
+    Database-backed location autocomplete:
+    Searches distinct registered pharmacy cities and areas.
+    Case-insensitive, supports partial typing (e.g. G, Gu, Vi, Hy).
+    """
+    if not query or not query.strip():
+        return []
+    
+    conn = get_db_connection()
+    term = f"%{query.strip().lower()}%"
+    prefix_term = f"{query.strip().lower()}%"
+    cursor = conn.cursor()
+    
+    # 1. Distinct cities from approved pharmacies
+    city_rows = cursor.execute("""
+        SELECT DISTINCT city, state 
+        FROM pharmacies 
+        WHERE status = 'approved' AND LOWER(city) LIKE ?
+        ORDER BY CASE WHEN LOWER(city) LIKE ? THEN 0 ELSE 1 END, city ASC
+        LIMIT ?
+    """, (term, prefix_term, limit)).fetchall()
+    
+    # 2. Distinct areas/localities from approved pharmacies
+    area_rows = cursor.execute("""
+        SELECT DISTINCT area, city, state 
+        FROM pharmacies 
+        WHERE status = 'approved' AND LOWER(area) LIKE ? AND LOWER(area) != LOWER(city)
+        ORDER BY CASE WHEN LOWER(area) LIKE ? THEN 0 ELSE 1 END, area ASC
+        LIMIT ?
+    """, (term, prefix_term, limit)).fetchall()
+    
+    conn.close()
+    
+    seen = set()
+    results = []
+    
+    for r in city_rows:
+        c_name = r['city'].strip()
+        c_key = c_name.lower()
+        if c_key not in seen:
+            seen.add(c_key)
+            results.append({
+                'name': c_name,
+                'type': 'City',
+                'state': r['state'] or 'Andhra Pradesh',
+                'display': f"{c_name}, {r['state']}" if r['state'] else c_name
+            })
+            
+    for r in area_rows:
+        a_name = r['area'].strip()
+        a_key = a_name.lower()
+        if a_key not in seen:
+            seen.add(a_key)
+            results.append({
+                'name': a_name,
+                'type': 'Area / Locality',
+                'city': r['city'],
+                'state': r['state'] or '',
+                'display': f"{a_name}, {r['city']}"
+            })
+            
+    q_lower = query.strip().lower()
+    results.sort(key=lambda x: (
+        0 if x['name'].lower().startswith(q_lower) else 1,
+        0 if x['type'] == 'City' else 1,
+        x['name'].lower()
+    ))
+    
+    return results[:limit]
+
 def create_pharmacy(user_id, pharmacy_name, owner_name, phone, email, address, area, city, state, pincode, latitude=None, longitude=None, operating_hours='8:00 AM - 10:00 PM', status='pending', is_demo=0):
     conn = get_db_connection()
     cursor = conn.cursor()

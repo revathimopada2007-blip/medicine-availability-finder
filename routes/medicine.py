@@ -4,7 +4,7 @@ from models.inventory import (
     search_nearby_pharmacies_with_medicine, get_medicine_stock_across_pharmacies, 
     get_inventory_by_pharmacy, check_pharmacies_exist_in_city
 )
-from models.pharmacy import get_pharmacy_by_id
+from models.pharmacy import get_pharmacy_by_id, search_locations
 from models.user import get_user_by_id
 from models.search_history import save_search_query
 from models.favourite import is_favourite
@@ -16,7 +16,9 @@ def index():
     user = None
     if 'user_id' in session:
         user = get_user_by_id(session['user_id'])
-    sample_medicines = search_medicines('', limit=8)
+    sample_medicines = search_medicines('Paracetamol', limit=8)
+    if not sample_medicines:
+        sample_medicines = search_medicines('', limit=8)
     return render_template('index.html', user=user, sample_medicines=sample_medicines)
 
 @medicine_bp.route('/search')
@@ -133,14 +135,24 @@ def pharmacy_details(pharmacy_id):
 
     return render_template('pharmacy_details.html', pharmacy=pharmacy, inventory=inventory, is_fav=is_fav, directions_url=directions_url)
 
-# REST APIs for frontend dynamic lookups
+# REST APIs for frontend dynamic lookups & autocomplete
+@medicine_bp.route('/api/medicines/autocomplete')
 @medicine_bp.route('/api/medicines/search')
-def api_search_suggestions():
+def api_medicine_autocomplete():
     query = request.args.get('q', '').strip()
     if not query:
         return jsonify([])
-    meds = search_medicines(query, limit=10)
+    meds = search_medicines(query, limit=12)
     return jsonify(meds)
+
+@medicine_bp.route('/api/locations/autocomplete')
+@medicine_bp.route('/api/locations/search')
+def api_location_autocomplete():
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify([])
+    locations = search_locations(query, limit=10)
+    return jsonify(locations)
 
 @medicine_bp.route('/api/medicines/nearby')
 def api_nearby_search():

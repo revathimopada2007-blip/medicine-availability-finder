@@ -336,7 +336,8 @@ main {
   align-items: center;
 }
 
-.suggestion-item:hover {
+.suggestion-item:hover,
+.suggestion-item.active {
   background-color: var(--primary-subtle);
 }
 

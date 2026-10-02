@@ -12,15 +12,33 @@ def get_all_medicines():
     conn.close()
     return [dict(r) for r in rows]
 
-def search_medicines(query, limit=60):
+def search_medicines(query, limit=20):
+    """
+    Database-backed medicine autocomplete:
+    Supports partial, case-insensitive searches (e.g. P, Pa, Par, Met, Aml, Ator).
+    Prioritizes prefix matches on medicine name, generic name, and brand name.
+    """
+    if not query or not query.strip():
+        return []
+        
     conn = get_db_connection()
-    term = f"%{query.strip()}%"
+    q = query.strip()
+    term = f"%{q}%"
+    prefix_term = f"{q}%"
+    
     rows = conn.execute("""
     SELECT * FROM medicines
     WHERE name LIKE ? OR generic_name LIKE ? OR brand_name LIKE ? OR category LIKE ? OR manufacturer LIKE ? OR strength LIKE ? OR form LIKE ?
-    ORDER BY name ASC
+    ORDER BY 
+      CASE 
+        WHEN LOWER(name) LIKE LOWER(?) THEN 0
+        WHEN LOWER(generic_name) LIKE LOWER(?) THEN 1
+        WHEN LOWER(brand_name) LIKE LOWER(?) THEN 2
+        ELSE 3
+      END,
+      name ASC
     LIMIT ?
-    """, (term, term, term, term, term, term, term, limit)).fetchall()
+    """, (term, term, term, term, term, term, term, prefix_term, prefix_term, prefix_term, limit)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 

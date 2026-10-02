@@ -20,23 +20,26 @@
     </div>
   </div>
 
-  <!-- Search Bar Header -->
+  <!-- Search Bar Header with Medicine & City Autocomplete -->
   <div class="card card-custom p-3 mb-4 shadow-sm">
     <form id="medicine-search-form" action="{{ url_for('medicine.search') }}" method="GET">
       <div class="row g-2 align-items-center">
+        <!-- Medicine Input with Autocomplete -->
         <div class="col-lg-6 position-relative">
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
-            <input type="text" id="search-query-input" name="q" class="form-control" placeholder="Search medicine, category (BP, Diabetes, Heart...), brand, or generic..." value="{{ query }}" autocomplete="off" required>
+            <input type="text" id="search-query-input" name="q" class="form-control" placeholder="Search medicine, category (BP, Diabetes...), brand, or generic..." value="{{ query }}" autocomplete="off" required>
           </div>
-          <div id="search-suggestions" class="search-suggestions-box"></div>
+          <div id="search-suggestions" class="search-suggestions-box" style="display: none;"></div>
         </div>
 
-        <div class="col-lg-4">
+        <!-- City/Area Input with Autocomplete -->
+        <div class="col-lg-4 position-relative">
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-geo-alt text-muted"></i></span>
-            <input type="text" name="city" class="form-control" placeholder="City or Area (e.g. Guntur, Hyderabad, Kukatpally, Vizag...)" value="{{ user_city or '' }}">
+            <input type="text" id="search-city-input" name="city" class="form-control" placeholder="City or Area (e.g. Guntur, Hyderabad, Kukatpally...)" value="{{ user_city or '' }}" autocomplete="off">
           </div>
+          <div id="city-suggestions" class="search-suggestions-box" style="display: none;"></div>
         </div>
 
         <div class="col-lg-2">
@@ -110,7 +113,7 @@
           <i class="bi bi-clock-history text-success me-1"></i>
           <span><strong>Inventory Freshness:</strong> Availability is based on the latest inventory information provided by registered pharmacies.</span>
         </div>
-        <span class="badge bg-secondary-subtle text-secondary border">Demo Inventory</span>
+        <span class="badge bg-secondary-subtle text-secondary border">Demo Data — College Project</span>
       </div>
 
       <div class="row g-3">

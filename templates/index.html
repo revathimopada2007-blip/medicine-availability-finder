@@ -14,27 +14,30 @@
       Search chronic care, prescription, and emergency medicines across registered pharmacies in <strong>Andhra Pradesh</strong> and <strong>Hyderabad</strong>. Check availability, live stock, and prices before visiting.
     </p>
 
-    <!-- Main Search Card -->
+    <!-- Main Search Card with Autocomplete -->
     <div class="row justify-content-center">
       <div class="col-lg-9">
         <div class="card card-custom p-4 search-hero-card shadow text-start">
           <form id="hero-search-form" action="{{ url_for('medicine.search') }}" method="GET">
             <div class="row g-2">
+              <!-- Medicine input with autocomplete -->
               <div class="col-md-7 position-relative">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-capsule me-1 text-success"></i>Medicine Name, Category, or Generic</label>
                 <div class="input-group">
                   <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
                   <input type="text" id="hero-query-input" name="q" class="form-control form-control-lg fs-6" placeholder="e.g. Metformin, Amlodipine, Telmisartan, Dolo 650, Atorvastatin..." autocomplete="off" required>
                 </div>
-                <div id="hero-search-suggestions" class="search-suggestions-box"></div>
+                <div id="hero-search-suggestions" class="search-suggestions-box" style="display: none;"></div>
               </div>
 
-              <div class="col-md-5">
+              <!-- City input with autocomplete -->
+              <div class="col-md-5 position-relative">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-geo-alt me-1 text-danger"></i>City or Locality</label>
                 <div class="input-group">
                   <span class="input-group-text bg-white"><i class="bi bi-geo text-muted"></i></span>
-                  <input type="text" name="city" class="form-control form-control-lg fs-6" placeholder="e.g. Guntur, Hyderabad, Kukatpally, Vizag...">
+                  <input type="text" id="hero-city-input" name="city" class="form-control form-control-lg fs-6" placeholder="e.g. Guntur, Hyderabad, Kukatpally, Vizag..." autocomplete="off">
                 </div>
+                <div id="hero-city-suggestions" class="search-suggestions-box" style="display: none;"></div>
               </div>
 
               <input type="hidden" id="hero-lat" name="lat">

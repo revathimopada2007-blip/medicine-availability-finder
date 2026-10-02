@@ -1,13 +1,291 @@
-// Search Page & Auto-suggestions Logic
+// Medicine & Location Autocomplete and Search Page Logic
 document.addEventListener('DOMContentLoaded', function () {
-  const searchInput = document.getElementById('search-query-input');
-  const suggestionsBox = document.getElementById('search-suggestions');
-  const gpsBtn = document.getElementById('detect-gps-btn');
-  const latInput = document.getElementById('search-lat');
-  const lngInput = document.getElementById('search-lng');
-  const locationText = document.getElementById('location-status-text');
+  // Setup Autocomplete for Search Page
+  setupMedicineAutocomplete('search-query-input', 'search-suggestions', 'medicine-search-form');
+  setupLocationAutocomplete('search-city-input', 'city-suggestions');
 
-  // GPS Click handler
+  // Setup Autocomplete for Home Page Hero
+  setupMedicineAutocomplete('hero-query-input', 'hero-search-suggestions', 'hero-search-form');
+  setupLocationAutocomplete('hero-city-input', 'hero-city-suggestions');
+
+  // GPS Click handlers
+  setupGpsHandler('detect-gps-btn', 'search-lat', 'search-lng', 'location-status-text', 'medicine-search-form', 'search-query-input');
+  setupGpsHandler('hero-gps-btn', 'hero-lat', 'hero-lng', null, null, null);
+});
+
+/**
+ * Generic Medicine Autocomplete with Database-backed API,
+ * Keyboard Navigation, Mouse Selection, and Click-Outside Dismissal.
+ */
+function setupMedicineAutocomplete(inputId, boxId, formId) {
+  const input = document.getElementById(inputId);
+  const box = document.getElementById(boxId);
+  if (!input || !box) return;
+
+  let debounceTimer = null;
+  let activeIndex = -1;
+
+  input.addEventListener('input', function () {
+    const query = input.value.trim();
+    clearTimeout(debounceTimer);
+    activeIndex = -1;
+
+    if (query.length < 1) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+
+    debounceTimer = setTimeout(function () {
+      fetch(`/api/medicines/autocomplete?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data.length === 0) {
+            box.innerHTML = `
+              <div class="p-3 text-muted text-center small">
+                <i class="bi bi-info-circle me-1"></i>No matching medicines found
+              </div>`;
+            box.style.display = 'block';
+            return;
+          }
+
+          let html = '';
+          data.forEach((med, idx) => {
+            const rxBadge = med.prescription_required 
+              ? '<span class="badge bg-danger ms-2" style="font-size: 0.7rem;">Rx</span>' 
+              : '<span class="badge bg-success-subtle text-success ms-2 border" style="font-size: 0.7rem;">OTC</span>';
+            
+            const categoryTag = med.category 
+              ? `<span class="badge bg-light text-secondary border me-1">${med.category}</span>` 
+              : '';
+
+            const subInfo = med.brand_name 
+              ? `Brand: ${med.brand_name}` 
+              : (med.generic_name ? `Generic: ${med.generic_name}` : (med.manufacturer || ''));
+
+            html += `
+              <div class="suggestion-item" data-index="${idx}" data-name="${escapeHtml(med.name)}">
+                <div>
+                  <div class="d-flex align-items-center flex-wrap">
+                    <strong class="text-dark">${highlightMatch(med.name, query)}</strong>
+                    ${rxBadge}
+                  </div>
+                  <div class="small text-muted mt-1">
+                    ${categoryTag}
+                    <span>${escapeHtml(subInfo)}</span>
+                  </div>
+                </div>
+                <i class="bi bi-search text-muted ms-2"></i>
+              </div>
+            `;
+          });
+
+          box.innerHTML = html;
+          box.style.display = 'block';
+
+          // Click listeners on suggestions
+          box.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', function () {
+              const medName = this.getAttribute('data-name');
+              input.value = medName;
+              box.style.display = 'none';
+              if (formId) {
+                const form = document.getElementById(formId);
+                if (form) form.submit();
+              }
+            });
+          });
+        })
+        .catch(err => {
+          console.error('Error fetching medicine autocomplete:', err);
+        });
+    }, 150);
+  });
+
+  // Keyboard navigation (ArrowUp, ArrowDown, Enter, Escape)
+  input.addEventListener('keydown', function (e) {
+    const items = box.querySelectorAll('.suggestion-item');
+    if (!items || items.length === 0 || box.style.display === 'none') {
+      if (e.key === 'Enter' && formId) {
+        return; // Allow form submit
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+      updateActiveItem(items, activeIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+      updateActiveItem(items, activeIndex);
+    } else if (e.key === 'Enter') {
+      if (activeIndex >= 0 && activeIndex < items.length) {
+        e.preventDefault();
+        items[activeIndex].click();
+      }
+    } else if (e.key === 'Escape') {
+      box.style.display = 'none';
+      activeIndex = -1;
+    }
+  });
+
+  // Hide on click outside
+  document.addEventListener('click', function (e) {
+    if (!input.contains(e.target) && !box.contains(e.target)) {
+      box.style.display = 'none';
+      activeIndex = -1;
+    }
+  });
+}
+
+/**
+ * Generic Location (City/Area) Autocomplete with Database-backed API,
+ * Keyboard Navigation, Mouse Selection, and Click-Outside Dismissal.
+ */
+function setupLocationAutocomplete(inputId, boxId) {
+  const input = document.getElementById(inputId);
+  const box = document.getElementById(boxId);
+  if (!input || !box) return;
+
+  let debounceTimer = null;
+  let activeIndex = -1;
+
+  input.addEventListener('input', function () {
+    const query = input.value.trim();
+    clearTimeout(debounceTimer);
+    activeIndex = -1;
+
+    if (query.length < 1) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+
+    debounceTimer = setTimeout(function () {
+      fetch(`/api/locations/autocomplete?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data.length === 0) {
+            box.innerHTML = `
+              <div class="p-3 text-muted text-center small">
+                <i class="bi bi-geo-alt me-1"></i>No matching locations found in registered pharmacies
+              </div>`;
+            box.style.display = 'block';
+            return;
+          }
+
+          let html = '';
+          data.forEach((loc, idx) => {
+            const isCity = loc.type === 'City';
+            const icon = isCity ? 'bi-geo-alt-fill text-danger' : 'bi-pin-map-fill text-primary';
+            const badge = isCity 
+              ? '<span class="badge bg-success-subtle text-success border ms-2">City</span>' 
+              : '<span class="badge bg-info-subtle text-info border ms-2">Locality</span>';
+
+            html += `
+              <div class="suggestion-item" data-index="${idx}" data-name="${escapeHtml(loc.name)}">
+                <div class="d-flex align-items-center">
+                  <i class="bi ${icon} me-2 fs-5"></i>
+                  <div>
+                    <strong class="text-dark">${highlightMatch(loc.name, query)}</strong>
+                    ${badge}
+                    <div class="small text-muted">${escapeHtml(loc.display || loc.state)}</div>
+                  </div>
+                </div>
+                <i class="bi bi-arrow-right-short text-muted fs-4"></i>
+              </div>
+            `;
+          });
+
+          box.innerHTML = html;
+          box.style.display = 'block';
+
+          box.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', function () {
+              const locName = this.getAttribute('data-name');
+              input.value = locName;
+              box.style.display = 'none';
+            });
+          });
+        })
+        .catch(err => {
+          console.error('Error fetching location autocomplete:', err);
+        });
+    }, 150);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    const items = box.querySelectorAll('.suggestion-item');
+    if (!items || items.length === 0 || box.style.display === 'none') return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+      updateActiveItem(items, activeIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+      updateActiveItem(items, activeIndex);
+    } else if (e.key === 'Enter') {
+      if (activeIndex >= 0 && activeIndex < items.length) {
+        e.preventDefault();
+        items[activeIndex].click();
+      }
+    } else if (e.key === 'Escape') {
+      box.style.display = 'none';
+      activeIndex = -1;
+    }
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!input.contains(e.target) && !box.contains(e.target)) {
+      box.style.display = 'none';
+      activeIndex = -1;
+    }
+  });
+}
+
+function updateActiveItem(items, index) {
+  items.forEach((item, i) => {
+    if (i === index) {
+      item.classList.add('active');
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
+
+function highlightMatch(text, query) {
+  if (!text || !query) return escapeHtml(text);
+  const escapedText = escapeHtml(text);
+  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+  return escapedText.replace(regex, '<span class="text-success fw-bold text-decoration-underline">$1</span>');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function setupGpsHandler(btnId, latInputId, lngInputId, statusTextId, formId, searchInputId) {
+  const gpsBtn = document.getElementById(btnId);
+  const latInput = document.getElementById(latInputId);
+  const lngInput = document.getElementById(lngInputId);
+  const locationText = statusTextId ? document.getElementById(statusTextId) : null;
+  const searchInput = searchInputId ? document.getElementById(searchInputId) : null;
+
   if (gpsBtn) {
     gpsBtn.addEventListener('click', function () {
       gpsBtn.disabled = true;
@@ -15,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       detectUserLocation(function (coords, err) {
         gpsBtn.disabled = false;
-        gpsBtn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Use My Current Location';
+        gpsBtn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Use GPS Location';
 
         if (err) {
           alert(err);
@@ -30,83 +308,13 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           showToast('GPS coordinates acquired successfully!', 'success');
 
-          // If on search page and query present, trigger search form submission
-          const form = document.getElementById('medicine-search-form');
-          if (form && searchInput && searchInput.value.trim().length > 0) {
-            form.submit();
+          if (formId && searchInput && searchInput.value.trim().length > 0) {
+            const form = document.getElementById(formId);
+            if (form) form.submit();
           }
         }
       });
     });
-  }
-
-  // Live Auto-suggest on search input
-  if (searchInput && suggestionsBox) {
-    let debounceTimer = null;
-
-    searchInput.addEventListener('input', function () {
-      const q = searchInput.value.trim();
-      clearTimeout(debounceTimer);
-
-      if (q.length < 2) {
-        suggestionsBox.style.display = 'none';
-        suggestionsBox.innerHTML = '';
-        return;
-      }
-
-      debounceTimer = setTimeout(function () {
-        fetch(`/api/medicines/search?q=${encodeURIComponent(q)}`)
-          .then(res => res.json())
-          .then(data => {
-            if (!data || data.length === 0) {
-              suggestionsBox.style.display = 'none';
-              return;
-            }
-
-            let html = '';
-            data.forEach(med => {
-              const rxBadge = med.prescription_required ? '<span class="badge bg-danger ms-2">Rx</span>' : '';
-              html += `
-                <div class="suggestion-item" onclick="selectSuggestion('${med.name.replace(/'/g, "\\'")}')">
-                  <div>
-                    <strong>${med.name}</strong> <span class="text-muted">(${med.strength || ''} ${med.form || ''})</span>
-                    ${rxBadge}
-                    <div class="small text-muted">${med.brand_name ? 'Brand: ' + med.brand_name : (med.generic_name ? 'Generic: ' + med.generic_name : '')}</div>
-                  </div>
-                  <i class="bi bi-search text-muted"></i>
-                </div>
-              `;
-            });
-            suggestionsBox.innerHTML = html;
-            suggestionsBox.style.display = 'block';
-          })
-          .catch(err => {
-            console.error('Error fetching suggestions:', err);
-          });
-      }, 250);
-    });
-
-    // Hide suggestions on outside click
-    document.addEventListener('click', function (e) {
-      if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
-        suggestionsBox.style.display = 'none';
-      }
-    });
-  }
-});
-
-function selectSuggestion(medicineName) {
-  const searchInput = document.getElementById('search-query-input');
-  const suggestionsBox = document.getElementById('search-suggestions');
-  if (searchInput) {
-    searchInput.value = medicineName;
-  }
-  if (suggestionsBox) {
-    suggestionsBox.style.display = 'none';
-  }
-  const form = document.getElementById('medicine-search-form');
-  if (form) {
-    form.submit();
   }
 }
 
@@ -149,7 +357,7 @@ function toggleFavourite(pharmacyId, btnElement) {
       }
     })
     .catch(err => {
-      console.error(err);
-      showToast('Please log in to save favourite pharmacies.', 'warning');
+      console.error('Favourite action error:', err);
+      showToast('Network error while updating favourites', 'danger');
     });
 }
