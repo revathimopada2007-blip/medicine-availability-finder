@@ -14,8 +14,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /**
- * Generic Medicine Autocomplete with Database-backed API,
- * Keyboard Navigation, Mouse Selection, and Click-Outside Dismissal.
+ * STRICT STARTING-LETTER / PREFIX MATCHING Medicine Autocomplete:
+ * Suggestions match only the beginning of the medicine name.
  */
 function setupMedicineAutocomplete(inputId, boxId, formId) {
   const input = document.getElementById(inputId);
@@ -40,7 +40,11 @@ function setupMedicineAutocomplete(inputId, boxId, formId) {
       fetch(`/api/medicines/autocomplete?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(data => {
-          if (!data || data.length === 0) {
+          // Client-side strict prefix filter
+          const qLower = query.toLowerCase();
+          const filtered = (data || []).filter(med => med.name && med.name.toLowerCase().startsWith(qLower));
+
+          if (!filtered || filtered.length === 0) {
             box.innerHTML = `
               <div class="p-3 text-muted text-center small">
                 <i class="bi bi-info-circle me-1"></i>No matching medicines found
@@ -50,13 +54,13 @@ function setupMedicineAutocomplete(inputId, boxId, formId) {
           }
 
           let html = '';
-          data.forEach((med, idx) => {
+          filtered.forEach((med, idx) => {
             const rxBadge = med.prescription_required 
               ? '<span class="badge bg-danger ms-2" style="font-size: 0.7rem;">Rx</span>' 
               : '<span class="badge bg-success-subtle text-success ms-2 border" style="font-size: 0.7rem;">OTC</span>';
             
             const categoryTag = med.category 
-              ? `<span class="badge bg-light text-secondary border me-1">${med.category}</span>` 
+              ? `<span class="badge bg-light text-secondary border me-1">${escapeHtml(med.category)}</span>` 
               : '';
 
             const subInfo = med.brand_name 
@@ -67,7 +71,7 @@ function setupMedicineAutocomplete(inputId, boxId, formId) {
               <div class="suggestion-item" data-index="${idx}" data-name="${escapeHtml(med.name)}">
                 <div>
                   <div class="d-flex align-items-center flex-wrap">
-                    <strong class="text-dark">${highlightMatch(med.name, query)}</strong>
+                    <strong class="text-dark">${highlightPrefixMatch(med.name, query)}</strong>
                     ${rxBadge}
                   </div>
                   <div class="small text-muted mt-1">
@@ -83,7 +87,6 @@ function setupMedicineAutocomplete(inputId, boxId, formId) {
           box.innerHTML = html;
           box.style.display = 'block';
 
-          // Click listeners on suggestions
           box.querySelectorAll('.suggestion-item').forEach(item => {
             item.addEventListener('click', function () {
               const medName = this.getAttribute('data-name');
@@ -107,7 +110,7 @@ function setupMedicineAutocomplete(inputId, boxId, formId) {
     const items = box.querySelectorAll('.suggestion-item');
     if (!items || items.length === 0 || box.style.display === 'none') {
       if (e.key === 'Enter' && formId) {
-        return; // Allow form submit
+        return;
       }
       return;
     }
@@ -141,8 +144,8 @@ function setupMedicineAutocomplete(inputId, boxId, formId) {
 }
 
 /**
- * Generic Location (City/Area) Autocomplete with Database-backed API,
- * Keyboard Navigation, Mouse Selection, and Click-Outside Dismissal.
+ * STRICT STARTING-LETTER / PREFIX MATCHING Location Autocomplete:
+ * Suggestions match only the beginning of the city/area name.
  */
 function setupLocationAutocomplete(inputId, boxId) {
   const input = document.getElementById(inputId);
@@ -167,7 +170,11 @@ function setupLocationAutocomplete(inputId, boxId) {
       fetch(`/api/locations/autocomplete?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(data => {
-          if (!data || data.length === 0) {
+          // Client-side strict prefix filter
+          const qLower = query.toLowerCase();
+          const filtered = (data || []).filter(loc => loc.name && loc.name.toLowerCase().startsWith(qLower));
+
+          if (!filtered || filtered.length === 0) {
             box.innerHTML = `
               <div class="p-3 text-muted text-center small">
                 <i class="bi bi-geo-alt me-1"></i>No matching locations found in registered pharmacies
@@ -177,7 +184,7 @@ function setupLocationAutocomplete(inputId, boxId) {
           }
 
           let html = '';
-          data.forEach((loc, idx) => {
+          filtered.forEach((loc, idx) => {
             const isCity = loc.type === 'City';
             const icon = isCity ? 'bi-geo-alt-fill text-danger' : 'bi-pin-map-fill text-primary';
             const badge = isCity 
@@ -189,7 +196,7 @@ function setupLocationAutocomplete(inputId, boxId) {
                 <div class="d-flex align-items-center">
                   <i class="bi ${icon} me-2 fs-5"></i>
                   <div>
-                    <strong class="text-dark">${highlightMatch(loc.name, query)}</strong>
+                    <strong class="text-dark">${highlightPrefixMatch(loc.name, query)}</strong>
                     ${badge}
                     <div class="small text-muted">${escapeHtml(loc.display || loc.state)}</div>
                   </div>
@@ -258,11 +265,16 @@ function updateActiveItem(items, index) {
   });
 }
 
-function highlightMatch(text, query) {
+function highlightPrefixMatch(text, query) {
   if (!text || !query) return escapeHtml(text);
-  const escapedText = escapeHtml(text);
-  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
-  return escapedText.replace(regex, '<span class="text-success fw-bold text-decoration-underline">$1</span>');
+  const qLower = query.toLowerCase();
+  const tLower = text.toLowerCase();
+  if (tLower.startsWith(qLower)) {
+    const matchPart = escapeHtml(text.slice(0, query.length));
+    const restPart = escapeHtml(text.slice(query.length));
+    return `<span class="text-success fw-bold text-decoration-underline">${matchPart}</span>${restPart}`;
+  }
+  return escapeHtml(text);
 }
 
 function escapeHtml(str) {
@@ -273,10 +285,6 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
-
-function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function setupGpsHandler(btnId, latInputId, lngInputId, statusTextId, formId, searchInputId) {

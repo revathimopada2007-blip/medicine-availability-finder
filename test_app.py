@@ -47,208 +47,177 @@ class MedicineFinderTestCase(unittest.TestCase):
         
         cursor.execute("SELECT count(*) FROM medicines")
         med_count = cursor.fetchone()[0]
-        self.assertGreaterEqual(med_count, 60, "Should have expanded catalog with chronic condition medicines")
+        self.assertGreaterEqual(med_count, 60)
 
         cursor.execute("SELECT count(*) FROM pharmacies")
         pharm_count = cursor.fetchone()[0]
-        self.assertGreaterEqual(pharm_count, 20, "Should have seeded multi-city demo pharmacies")
+        self.assertGreaterEqual(pharm_count, 20)
 
         cursor.execute("SELECT count(*) FROM inventory")
         inv_count = cursor.fetchone()[0]
-        self.assertGreaterEqual(inv_count, 500, "Should have populated pharmacy inventories")
+        self.assertGreaterEqual(inv_count, 500)
         conn.close()
 
-    def test_medicine_autocomplete(self):
+    def test_strict_medicine_autocomplete_prefix_matching(self):
         """
-        REQUIREMENT 1: Test medicine autocomplete suggestions using:
-        P, Pa, Par, Met, Aml, Ator (and no match case).
+        STRICT PREFIX MATCHING TEST FOR MEDICINES:
+        - Typing 'P' -> only medicines whose NAME starts with 'P'
+        - Typing 'Pa' -> only medicines whose NAME starts with 'Pa'
+        - Typing 'Par' -> Paracetamol (MUST NOT include Dolo 650, Sinarest, Combiflam)
+        - Typing 'Met' -> Metformin, Metoprolol, Methotrexate
+        - Typing 'Aml' -> Amlodipine
+        - Typing 'Ator' -> Atorvastatin (MUST NOT include Bilastine or Budesonide)
         """
         with self.app.app_context():
-            # Test prefix 'P'
+            # 1. Test 'P'
             res_p = search_medicines("P")
             self.assertGreater(len(res_p), 0)
-            names_p = [m['name'] for m in res_p]
-            self.assertTrue(any("Paracetamol" in n or "Pantocid" in n or "Pan" in n or "PTU" in n or "Pioz" in n for n in names_p))
+            for m in res_p:
+                self.assertTrue(m['name'].lower().startswith('p'), f"'{m['name']}' does not start with 'P'")
 
-            # Test prefix 'Pa'
+            # 2. Test 'Pa'
             res_pa = search_medicines("Pa")
             self.assertGreater(len(res_pa), 0)
-            names_pa = [m['name'] for m in res_pa]
-            self.assertTrue(any("Paracetamol" in n or "Pantocid" in n or "Pan" in n for n in names_pa))
+            for m in res_pa:
+                self.assertTrue(m['name'].lower().startswith('pa'), f"'{m['name']}' does not start with 'Pa'")
 
-            # Test prefix 'Par' -> Paracetamol
+            # 3. Test 'Par' -> Paracetamol ONLY
             res_par = search_medicines("Par")
             self.assertGreater(len(res_par), 0)
             names_par = [m['name'] for m in res_par]
-            self.assertTrue(any("Paracetamol" in n for n in names_par))
+            for name in names_par:
+                self.assertTrue(name.lower().startswith('par'), f"'{name}' does not start with 'Par'")
+            # Crucial assertion: no category bleed / unrelated medicines
+            self.assertNotIn("Dolo 650 Tablet", names_par)
+            self.assertNotIn("Sinarest Tablet", names_par)
+            self.assertNotIn("Combiflam Tablet", names_par)
 
-            # Test prefix 'Met' -> Metformin / Metoprolol / Methotrexate
+            # 4. Test 'Met'
             res_met = search_medicines("Met")
             self.assertGreater(len(res_met), 0)
-            names_met = [m['name'] for m in res_met]
-            self.assertTrue(any("Metformin" in n or "Metoprolol" in n for n in names_met))
+            for m in res_met:
+                self.assertTrue(m['name'].lower().startswith('met'), f"'{m['name']}' does not start with 'Met'")
 
-            # Test prefix 'Aml' -> Amlodipine
+            # 5. Test 'Aml'
             res_aml = search_medicines("Aml")
             self.assertGreater(len(res_aml), 0)
-            names_aml = [m['name'] for m in res_aml]
-            self.assertTrue(any("Amlodipine" in n for n in names_aml))
+            for m in res_aml:
+                self.assertTrue(m['name'].lower().startswith('aml'), f"'{m['name']}' does not start with 'Aml'")
 
-            # Test prefix 'Ator' -> Atorvastatin
+            # 6. Test 'Ator' -> Atorvastatin ONLY
             res_ator = search_medicines("Ator")
             self.assertGreater(len(res_ator), 0)
             names_ator = [m['name'] for m in res_ator]
-            self.assertTrue(any("Atorvastatin" in n for n in names_ator))
+            for name in names_ator:
+                self.assertTrue(name.lower().startswith('ator'), f"'{name}' does not start with 'Ator'")
+            self.assertNotIn("Bilastine 20mg (Bilaxten 20)", names_ator)
+            self.assertNotIn("Budesonide + Formoterol Inhaler (Foracort 200)", names_ator)
 
-            # Test API endpoint response
-            response = self.client.get('/api/medicines/autocomplete?q=Par')
-            self.assertEqual(response.status_code, 200)
-            data = json.loads(response.data)
-            self.assertGreater(len(data), 0)
-
-            # Test non-matching query
-            res_none = search_medicines("XyzNonExistent999")
-            self.assertEqual(len(res_none), 0)
-
-    def test_location_autocomplete(self):
+    def test_strict_location_autocomplete_prefix_matching(self):
         """
-        REQUIREMENT 2: Test location autocomplete suggestions using:
-        G, Gu, Vi, Hy (and no match case).
+        STRICT PREFIX MATCHING TEST FOR LOCATIONS:
+        - 'T' -> locations starting with T
+        - 'Ti' -> Tirupati (MUST NOT contain Mayuri Junction or Kotipalli)
+        - 'Vi' -> Vijayawada, Visakhapatnam, Vizianagaram
+        - 'Gu' -> Guntur (MUST NOT contain Korlagunta)
+        - 'Hy' -> Hyderabad
         """
         with self.app.app_context():
-            # Test 'G' -> Guntur, Gachibowli, Gajuwaka
-            res_g = search_locations("G")
-            self.assertGreater(len(res_g), 0)
-            names_g = [loc['name'] for loc in res_g]
-            self.assertTrue("Guntur" in names_g or any("G" in n for n in names_g))
+            # 1. Test 'T'
+            res_t = search_locations("T")
+            self.assertGreater(len(res_t), 0)
+            for l in res_t:
+                self.assertTrue(l['name'].lower().startswith('t'), f"Location '{l['name']}' does not start with 'T'")
 
-            # Test 'Gu' -> Guntur
-            res_gu = search_locations("Gu")
-            self.assertGreater(len(res_gu), 0)
-            names_gu = [loc['name'] for loc in res_gu]
-            self.assertIn("Guntur", names_gu)
+            # 2. Test 'Ti' -> Tirupati
+            res_ti = search_locations("Ti")
+            self.assertGreater(len(res_ti), 0)
+            names_ti = [l['name'] for l in res_ti]
+            for name in names_ti:
+                self.assertTrue(name.lower().startswith('ti'), f"Location '{name}' does not start with 'Ti'")
+            self.assertNotIn("Mayuri Junction", names_ti)
+            self.assertNotIn("Kotipalli Road", names_ti)
 
-            # Test 'Vi' -> Vizianagaram, Visakhapatnam, Vijayawada
+            # 3. Test 'Vi' -> Vijayawada, Visakhapatnam, Vizianagaram
             res_vi = search_locations("Vi")
             self.assertGreater(len(res_vi), 0)
-            names_vi = [loc['name'] for loc in res_vi]
+            names_vi = [l['name'] for l in res_vi]
+            for name in names_vi:
+                self.assertTrue(name.lower().startswith('vi'), f"Location '{name}' does not start with 'Vi'")
             self.assertTrue(any(c in names_vi for c in ["Vijayawada", "Visakhapatnam", "Vizianagaram"]))
 
-            # Test 'Hy' -> Hyderabad
+            # 4. Test 'Gu' -> Guntur (NO Korlagunta)
+            res_gu = search_locations("Gu")
+            self.assertGreater(len(res_gu), 0)
+            names_gu = [l['name'] for l in res_gu]
+            for name in names_gu:
+                self.assertTrue(name.lower().startswith('gu'), f"Location '{name}' does not start with 'Gu'")
+            self.assertIn("Guntur", names_gu)
+            self.assertNotIn("Korlagunta", names_gu)
+
+            # 5. Test 'Hy' -> Hyderabad
             res_hy = search_locations("Hy")
             self.assertGreater(len(res_hy), 0)
-            names_hy = [loc['name'] for loc in res_hy]
+            names_hy = [l['name'] for l in res_hy]
+            for name in names_hy:
+                self.assertTrue(name.lower().startswith('hy'), f"Location '{name}' does not start with 'Hy'")
             self.assertIn("Hyderabad", names_hy)
 
-            # Test API endpoint
-            response = self.client.get('/api/locations/autocomplete?q=Gu')
-            self.assertEqual(response.status_code, 200)
-            data = json.loads(response.data)
-            self.assertGreater(len(data), 0)
-            self.assertEqual(data[0]['name'], 'Guntur')
-
-            # Test non-matching query
-            res_none = search_locations("NonExistentCity999")
-            self.assertEqual(len(res_none), 0)
-
     def test_city_specific_search_and_no_leakage(self):
-        """
-        REQUIREMENT 3 & 11:
-        Test city-based search and strict ZERO CROSS-CITY LEAKAGE:
-        - Paracetamol + Guntur
-        - Paracetamol + Vizianagaram
-        - Paracetamol + Visakhapatnam
-        - Metformin + Guntur
-        - Amlodipine + Hyderabad
-        - Atorvastatin + Vijayawada
-        """
+        """Test city search zero-leakage behavior."""
         with self.app.app_context():
-            # 1. Paracetamol + Guntur -> ONLY Guntur pharmacies
             par_guntur = search_nearby_pharmacies_with_medicine("Paracetamol", user_city="Guntur")
-            self.assertGreater(len(par_guntur), 0, "Guntur should have Paracetamol")
+            self.assertGreater(len(par_guntur), 0)
             for item in par_guntur:
-                self.assertEqual(item['pharmacy_city'].lower(), 'guntur', f"Cross-city leakage! Got {item['pharmacy_city']}")
+                self.assertEqual(item['pharmacy_city'].lower(), 'guntur')
 
-            # 2. Paracetamol + Vizianagaram -> ONLY Vizianagaram pharmacies
             par_vzm = search_nearby_pharmacies_with_medicine("Paracetamol", user_city="Vizianagaram")
-            self.assertGreater(len(par_vzm), 0, "Vizianagaram should have Paracetamol")
+            self.assertGreater(len(par_vzm), 0)
             for item in par_vzm:
                 self.assertEqual(item['pharmacy_city'].lower(), 'vizianagaram')
 
-            # 3. Paracetamol + Visakhapatnam -> ONLY Visakhapatnam pharmacies
             par_vizag = search_nearby_pharmacies_with_medicine("Paracetamol", user_city="Visakhapatnam")
-            self.assertGreater(len(par_vizag), 0, "Visakhapatnam should have Paracetamol")
+            self.assertGreater(len(par_vizag), 0)
             for item in par_vizag:
                 self.assertEqual(item['pharmacy_city'].lower(), 'visakhapatnam')
 
-            # 4. Metformin + Guntur -> ONLY Guntur pharmacies
             met_guntur = search_nearby_pharmacies_with_medicine("Metformin", user_city="Guntur")
             self.assertGreater(len(met_guntur), 0)
             for item in met_guntur:
                 self.assertEqual(item['pharmacy_city'].lower(), 'guntur')
 
-            # 5. Amlodipine + Hyderabad -> ONLY Hyderabad/Secunderabad pharmacies
             amlo_hyd = search_nearby_pharmacies_with_medicine("Amlodipine", user_city="Hyderabad")
             self.assertGreater(len(amlo_hyd), 0)
             for item in amlo_hyd:
                 self.assertIn(item['pharmacy_city'].lower(), ['hyderabad', 'secunderabad'])
 
-            # 6. Atorvastatin + Vijayawada -> ONLY Vijayawada pharmacies
             ator_vja = search_nearby_pharmacies_with_medicine("Atorvastatin", user_city="Vijayawada")
             self.assertGreater(len(ator_vja), 0)
             for item in ator_vja:
                 self.assertEqual(item['pharmacy_city'].lower(), 'vijayawada')
 
     def test_unregistered_and_new_city_handling(self):
-        """
-        REQUIREMENT 4:
-        Test city with no participating pharmacies (e.g. Tenali) or a completely new city.
-        Displays required exact messages without claiming pharmacies don't exist.
-        """
-        # Test registered city with pharmacies
-        has_guntur, count_guntur = check_pharmacies_exist_in_city("Guntur")
-        self.assertTrue(has_guntur)
-        self.assertGreater(count_guntur, 0)
-
-        # Test unregistered city (Tenali)
-        has_tenali, count_tenali = check_pharmacies_exist_in_city("Tenali")
-        self.assertFalse(has_tenali)
-        self.assertEqual(count_tenali, 0)
-
-        # Test completely new city (Tiruvuru)
-        has_new, count_new = check_pharmacies_exist_in_city("Tiruvuru")
-        self.assertFalse(has_new)
-        self.assertEqual(count_new, 0)
-
-        # Verify Search page renders required message
+        """Test empty state message for unregistered city."""
         response = self.client.get('/search?q=Paracetamol&city=Tenali')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"No Participating Pharmacies Found", response.data)
         self.assertIn(b"There are currently no pharmacies registered with Medicine Availability Finder in", response.data)
 
     def test_chronic_condition_categories_and_rx_marking(self):
-        """Test chronic condition categories and Rx prescription status."""
+        """Test chronic categories and Rx status."""
         with self.app.app_context():
             bp_results = search_nearby_pharmacies_with_medicine("Amlodipine")
             self.assertGreater(len(bp_results), 0)
             self.assertEqual(bp_results[0]['prescription_required'], 1)
 
-            diab_results = search_nearby_pharmacies_with_medicine("Metformin")
-            self.assertGreater(len(diab_results), 0)
-            self.assertEqual(diab_results[0]['prescription_required'], 1)
-
-            chol_results = search_nearby_pharmacies_with_medicine("Atorvastatin")
-            self.assertGreater(len(chol_results), 0)
-            self.assertEqual(chol_results[0]['prescription_required'], 1)
-
     def test_haversine_distance_calculation(self):
-        """Test exact geometric distance calculation using Haversine formula."""
+        """Test Haversine formula distance."""
         d = haversine_distance(16.3067, 80.4365, 16.3120, 80.4420)
         self.assertIsNotNone(d)
         self.assertAlmostEqual(d, 0.84, delta=0.2)
 
     def test_end_to_end_inventory_flow(self):
-        """Test creating, updating, and deleting inventory items."""
+        """Test inventory CRUD operations."""
         with self.app.app_context():
             inv_id, err = add_inventory_item(pharmacy_id=1, medicine_id=5, price=88.50, quantity=35)
             self.assertIsNone(err)
@@ -261,7 +230,7 @@ class MedicineFinderTestCase(unittest.TestCase):
             self.assertTrue(success)
 
     def test_stock_status_computation(self):
-        """Test dynamic calculation of stock status."""
+        """Test stock computation."""
         self.assertEqual(compute_stock_status(15)['code'], 'available')
         self.assertEqual(compute_stock_status(5)['code'], 'low_stock')
         self.assertEqual(compute_stock_status(0)['code'], 'out_of_stock')

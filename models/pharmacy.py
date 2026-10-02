@@ -14,45 +14,47 @@ def get_pharmacy_by_user_id(user_id):
 
 def search_locations(query, limit=10):
     """
-    Database-backed location autocomplete:
-    Searches distinct registered pharmacy cities and areas.
-    Case-insensitive, supports partial typing (e.g. G, Gu, Vi, Hy).
+    STRICT STARTING-LETTER / PREFIX MATCHING ONLY:
+    Matches only registered pharmacy cities and areas whose name begins with the query prefix.
+    Case-insensitive. No middle-letter or contains matching.
     """
     if not query or not query.strip():
         return []
     
     conn = get_db_connection()
-    term = f"%{query.strip().lower()}%"
-    prefix_term = f"{query.strip().lower()}%"
+    q = query.strip()
+    q_lower = q.lower()
+    prefix_term = f"{q_lower}%"
     cursor = conn.cursor()
     
-    # 1. Distinct cities from approved pharmacies
+    # 1. Distinct cities from approved pharmacies whose name begins with prefix
     city_rows = cursor.execute("""
         SELECT DISTINCT city, state 
         FROM pharmacies 
-        WHERE status = 'approved' AND LOWER(city) LIKE ?
-        ORDER BY CASE WHEN LOWER(city) LIKE ? THEN 0 ELSE 1 END, city ASC
+        WHERE status = 'approved' AND LOWER(TRIM(city)) LIKE ?
+        ORDER BY city ASC
         LIMIT ?
-    """, (term, prefix_term, limit)).fetchall()
+    """, (prefix_term, limit)).fetchall()
     
-    # 2. Distinct areas/localities from approved pharmacies
+    # 2. Distinct areas/localities from approved pharmacies whose name begins with prefix
     area_rows = cursor.execute("""
         SELECT DISTINCT area, city, state 
         FROM pharmacies 
-        WHERE status = 'approved' AND LOWER(area) LIKE ? AND LOWER(area) != LOWER(city)
-        ORDER BY CASE WHEN LOWER(area) LIKE ? THEN 0 ELSE 1 END, area ASC
+        WHERE status = 'approved' AND LOWER(TRIM(area)) LIKE ? AND LOWER(TRIM(area)) != LOWER(TRIM(city))
+        ORDER BY area ASC
         LIMIT ?
-    """, (term, prefix_term, limit)).fetchall()
+    """, (prefix_term, limit)).fetchall()
     
     conn.close()
     
     seen = set()
     results = []
     
+    # Cities first
     for r in city_rows:
         c_name = r['city'].strip()
         c_key = c_name.lower()
-        if c_key not in seen:
+        if c_key.startswith(q_lower) and c_key not in seen:
             seen.add(c_key)
             results.append({
                 'name': c_name,
@@ -61,10 +63,11 @@ def search_locations(query, limit=10):
                 'display': f"{c_name}, {r['state']}" if r['state'] else c_name
             })
             
+    # Areas second
     for r in area_rows:
         a_name = r['area'].strip()
         a_key = a_name.lower()
-        if a_key not in seen:
+        if a_key.startswith(q_lower) and a_key not in seen:
             seen.add(a_key)
             results.append({
                 'name': a_name,
@@ -74,9 +77,7 @@ def search_locations(query, limit=10):
                 'display': f"{a_name}, {r['city']}"
             })
             
-    q_lower = query.strip().lower()
     results.sort(key=lambda x: (
-        0 if x['name'].lower().startswith(q_lower) else 1,
         0 if x['type'] == 'City' else 1,
         x['name'].lower()
     ))
